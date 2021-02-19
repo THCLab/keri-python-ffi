@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+	"ffi",
+	"keriox_wrapper",
+]

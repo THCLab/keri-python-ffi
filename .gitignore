@@ -1,0 +1,6 @@
+/target
+.vscode/
+Cargo.lock
+
+ffi/python/libs
+ffi/python/python_venv
