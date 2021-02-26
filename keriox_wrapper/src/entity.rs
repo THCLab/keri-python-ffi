@@ -8,7 +8,7 @@ use keri::{
     prefix::{IdentifierPrefix, Prefix},
 };
 use keri::{derivation::basic::Basic, prefix::BasicPrefix};
-use std::{path::Path};
+use std::path::Path;
 use ursa::keys::PublicKey;
 
 pub enum KeyType {
@@ -55,9 +55,13 @@ impl Entity {
     }
 
     pub fn get_did_doc(&self, id: &str) -> Result<String, Error> {
-        let pref = id.parse().unwrap();
-        let state = self.kerl.get_state(&pref, &self.keri)?;
-        Ok(serde_json::to_string(&state_to_did_document(state.unwrap(), "keri")).unwrap())
+        let pref = id.parse().map_err(|e| Error::KeriError(e))?;
+        let state = self
+            .kerl
+            .get_state(&pref, &self.keri)?
+            .ok_or(Error::Generic("There is no state.".into()))?;
+        serde_json::to_string(&state_to_did_document(state, "keri"))
+            .map_err(|e| Error::Generic(e.to_string()))
     }
 
     pub fn update_keys(&mut self) -> Result<(), Error> {
@@ -78,11 +82,15 @@ impl Entity {
             .map_err(|e| Error::KeriError(e))?
             .unwrap_or(vec![]);
 
-        Ok(String::from_utf8(kerl).unwrap())
+        String::from_utf8(kerl).map_err(|e| Error::StringFromUtf8Error(e))
     }
 
-    pub fn get_prefix(&self) -> String {
-        self.keri.get_state().unwrap().unwrap().prefix.to_str()
+    pub fn get_prefix(&self) -> Result<String, Error> {
+        self.keri
+            .get_state()
+            .map_err(|e| Error::KeriError(e))?
+            .map(|s| s.prefix.to_str())
+            .ok_or(Error::Generic("There is no prefix".into()))
     }
 
     pub fn run(&self) -> Result<(), Error> {

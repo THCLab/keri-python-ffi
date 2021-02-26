@@ -1,9 +1,11 @@
+use std::error::Error;
+
 use clap::App as clapapp;
 use clap::Arg;
-use keriox_wrapper::{entity::Entity, error::Error};
+use keriox_wrapper::entity::Entity;
 use tempfile::tempdir;
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), Box<dyn Error>> {
     let matches = clapapp::new("get-command-line-args")
         .arg(
             Arg::with_name("host")
@@ -32,7 +34,7 @@ fn main() -> Result<(), Error> {
     let ap_path = "adr_db";
 
     if matches.is_present("client") {
-        let dir = tempdir().unwrap();
+        let dir = tempdir()?;
         let path = dir.path().to_str().unwrap();
         let seeds = "[
             \"rwXoACJgOleVZ2PY7kXn7rA0II0mHYDhc6WrBH8fDAc=\",
@@ -41,14 +43,9 @@ fn main() -> Result<(), Error> {
         let ent_adr = "localhost:3333";
         let mut ent = Entity::new(path, ent_adr, &seeds.trim(), ap_path);
 
-        println!("\n{}\n", ent.get_did_doc(&ent.get_prefix()).unwrap());
+        println!("\n{}\n", ent.get_did_doc(&ent.get_prefix()?)?);
         ent.update_keys()?;
-        println!("\n{}\n", ent.get_did_doc(&ent.get_prefix()).unwrap());
-        // ent.update_keys()?;
-        // println!(
-        //     "\n{}\n",
-        //     ent.get_did_doc(&ent.get_prefix(), &address).unwrap()
-        // );
+        println!("\n{}\n", ent.get_did_doc(&ent.get_prefix()?)?);
 
         let eve_id = "DSuhyBcPZEZLK-fcw5tzHn2N46wRCG_ZOoeKtWTOunRA";
 
@@ -59,7 +56,7 @@ fn main() -> Result<(), Error> {
             ent.get_did_doc("DT1iAhBWCkvChxNWsby2J0pJyxBIxbAtbLA0Ljx-Grh8",)?
         );
     } else {
-        let dir2 = tempdir().unwrap();
+        let dir2 = tempdir()?;
         let path = dir2.path().to_str().unwrap();
         let seeds = "[
             \"cwFTk-wgk3ZT2buPRIbK-zxgPx-TKbaegQvPEivN90Y=\",
@@ -67,7 +64,7 @@ fn main() -> Result<(), Error> {
         ]";
         let eve_adr = "localhost:2222";
         let ent = Entity::new(path, eve_adr, &seeds.trim(), ap_path);
-        println!("{}", ent.get_prefix());
+        println!("{}", ent.get_prefix()?);
         ent.run()?;
     }
     Ok(())
