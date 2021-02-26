@@ -1,32 +1,17 @@
 use std::fmt;
-use keriox_wrapper::entity::{Entity, KeyType, Key};
-use keriox_wrapper::address_provider::{AddressProvider};
-
-foreign_enum!(
-    enum KeyType {
-        ED = KeyType::Ed25519Sha512,
-    }
-);
-
-foreign_class!(
-    #[derive(Clone)]
-    class Key {
-        self_type Key;
-        constructor Key::new(key: Vec<u8>, key_type: KeyType) -> Key;
-    }
-);
+use keriox_wrapper::entity::{Entity};
 
 foreign_class!(
     #[derive(Clone)]
     class Entity {
         self_type Entity;
-        constructor Entity::new(db_path: &str, id: &str, address: &str) -> Entity ;
-        fn Entity::get_did_doc(&self, id: &str, adress: &str) -> Result<String, Error>;
-        fn Entity::incept_keys(&mut self, pk: &Key, nxt_pk: &Key) -> Result<Vec<u8>, Error> ;
-        fn Entity::update_keys(&self, pk: &Key , next_pk: &Key) -> Result<Vec<u8>, Error>;
-        fn Entity::confirm_key_update(&mut self, ser_event: &[u8], signature: &[u8]) -> Result<Vec<u8>, Error>;
-        fn Entity::get_prefix(&self) -> String;
+        constructor Entity::new(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Entity;
+        fn Entity::get_did_doc(&self, id: &str) -> Result<String, Error>;
+        fn Entity::update_keys(&mut self) -> Result<(), Error> ;
+        fn Entity::append(&mut self, msg: &str) -> Result<(), Error>;
         fn Entity::run(&self) -> Result<(), Error>;
+        fn Entity::get_prefix(&self) -> String;
+        fn Entity::get_kerl(&self) -> Result<String, Error>;
     }
 );
 

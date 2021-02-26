@@ -4,3 +4,4 @@ Cargo.lock
 
 ffi/python/libs
 ffi/python/python_venv
+ffi/python/adr_db
