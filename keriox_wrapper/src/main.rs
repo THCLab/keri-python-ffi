@@ -31,17 +31,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let port = matches.value_of("port").unwrap_or("5621");
     let _address = [host, ":", port].concat();
 
-    let ap_path = "adr_db";
+    let addr_dir = tempdir()?;
+    let ap_path = addr_dir.path().to_str().unwrap();
 
     if matches.is_present("client") {
         let dir = tempdir()?;
         let path = dir.path().to_str().unwrap();
         let seeds = "[
-            \"rwXoACJgOleVZ2PY7kXn7rA0II0mHYDhc6WrBH8fDAc=\",
-            \"6zz7M08-HQSFq92sJ8KJOT2cZ47x7pXFQLPB0pckB3Q=\"
-            ]";
+                \"rwXoACJgOleVZ2PY7kXn7rA0II0mHYDhc6WrBH8fDAc=\",
+                \"6zz7M08-HQSFq92sJ8KJOT2cZ47x7pXFQLPB0pckB3Q=\"
+                ]";
         let ent_adr = "localhost:3333";
-        let mut ent = Entity::new(path, ent_adr, &seeds.trim(), ap_path);
+        let mut ent = Entity::new(path, ent_adr, &seeds.trim(), ap_path)?;
 
         println!("\n{}\n", ent.get_did_doc(&ent.get_prefix()?)?);
         ent.update_keys()?;
@@ -59,11 +60,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let dir2 = tempdir()?;
         let path = dir2.path().to_str().unwrap();
         let seeds = "[
-            \"cwFTk-wgk3ZT2buPRIbK-zxgPx-TKbaegQvPEivN90Y=\",
-            \"lntkt3u6dDgiQxTATr01dy8M72uuaZEf9eTdM-70Gk8=\"
-        ]";
+                \"cwFTk-wgk3ZT2buPRIbK-zxgPx-TKbaegQvPEivN90Y=\",
+                \"lntkt3u6dDgiQxTATr01dy8M72uuaZEf9eTdM-70Gk8=\"
+            ]";
         let eve_adr = "localhost:2222";
-        let ent = Entity::new(path, eve_adr, &seeds.trim(), ap_path);
+        let ent = Entity::new(path, eve_adr, &seeds.trim(), ap_path)?;
         println!("{}", ent.get_prefix()?);
         ent.run()?;
     }

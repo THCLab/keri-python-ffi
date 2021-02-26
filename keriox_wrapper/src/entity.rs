@@ -38,20 +38,26 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn new(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Entity {
-        let seeds = serde_json::from_str(seeds).unwrap();
-        let db = LmdbEventDatabase::new(Path::new(db_path)).unwrap();
+    pub fn new(
+        db_path: &str,
+        address: &str,
+        seeds: &str,
+        address_store_path: &str,
+    ) -> Result<Entity, Error> {
+        let seeds = serde_json::from_str(seeds).map_err(|e| Error::Generic(e.to_string()))?;
+        let db = LmdbEventDatabase::new(Path::new(db_path))
+            .map_err(|e| Error::Generic(e.to_string()))?;
         let mut wallet = WalletWrapper::new();
-        wallet.incept_wallet_from_seed(seeds).unwrap();
-        let mut keri = Keri::new(db, wallet, IdentifierPrefix::default()).unwrap();
-        let icp = keri.incept().unwrap(); //process(icp.as_bytes());
+        wallet.incept_wallet_from_seed(seeds)?;
+        let mut keri = Keri::new(db, wallet, IdentifierPrefix::default())?;
+        let icp = keri.incept()?; //process(icp.as_bytes());
         let prefix = icp.event_message.event.prefix.to_str();
 
-        let talking_kerl = TalkingKerl::new(&prefix, address, address_store_path).unwrap();
-        Self {
+        let talking_kerl = TalkingKerl::new(&prefix, address, address_store_path)?;
+        Ok(Self {
             kerl: talking_kerl,
             keri,
-        }
+        })
     }
 
     pub fn get_did_doc(&self, id: &str) -> Result<String, Error> {

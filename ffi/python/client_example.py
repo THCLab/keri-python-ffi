@@ -6,7 +6,7 @@ import base64
 bob_temp_dir = tempfile.TemporaryDirectory()
 seeds = "[\"cwFTk-wgk3ZT2buPRIbK-zxgPx-TKbaegQvPEivN90Y=\", \"lntkt3u6dDgiQxTATr01dy8M72uuaZEf9eTdM-70Gk8=\"]"
 temp_provider = "./adr_db"
-bob = Entity(bob_temp_dir.name, 'localhost:3456', seeds, temp_provider)
+bob = Entity.new(bob_temp_dir.name, 'localhost:3456', seeds, temp_provider)
 
 print("\nBobs prefix: " + bob.get_prefix() + "\n")
 
