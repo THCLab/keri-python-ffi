@@ -7,14 +7,14 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-keri = { git = "https://github.com/edytapawlak/keriox", branch = "update_keri_module" }
+keri = { git = "https://github.com/decentralized-identity/keriox"}
 ursa = { git = "https://github.com/hyperledger/ursa", rev = "d4af8efd", default-features = false, features = ["portable"]}
 serde = "1.0"
 serde_json = "1.0"
 base64 = "0.13.0"
 thiserror = "1.0"
 tempfile = "3"
-jolocom_native_utils = { path = "../../rust-multi-target/rust/jolocom_native_utils" }
+jolocom_native_utils = { git = "https://github.com/THCLab/rust-multi-target", branch = "update_wallet", path = "./rust/jolocom_native_utils" }
 clap = "2.33.3"
 
 [dependencies.rustbreak]

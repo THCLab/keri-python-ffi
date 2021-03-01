@@ -11,16 +11,16 @@ use std::{
     time::Duration,
 };
 
-pub struct TalkingKerl {
+pub struct TCPCommunication {
     address: String,
     address_provider: AddressProvider,
 }
 
-impl TalkingKerl {
+impl TCPCommunication {
     pub fn new(pref: &str, adr: &str, ap_path: &str) -> Result<Self, Error> {
         let ap = AddressProvider::new(ap_path)?;
         ap.register(pref, adr)?;
-        Ok(TalkingKerl {
+        Ok(TCPCommunication {
             address: adr.to_string(),
             address_provider: ap,
         })

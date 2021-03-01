@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::talking_kerl::TalkingKerl;
+use crate::tcp_communication::TCPCommunication;
 use crate::wallet_wrapper::WalletWrapper;
 use jolocom_native_utils::did_document::state_to_did_document;
 use keri::{
@@ -33,7 +33,7 @@ impl Key {
 }
 
 pub struct Entity {
-    kerl: TalkingKerl,
+    comm: TCPCommunication,
     keri: Keri<LmdbEventDatabase, WalletWrapper>,
 }
 
@@ -53,9 +53,9 @@ impl Entity {
         let icp = keri.incept()?; //process(icp.as_bytes());
         let prefix = icp.event_message.event.prefix.to_str();
 
-        let talking_kerl = TalkingKerl::new(&prefix, address, address_store_path)?;
+        let talking_kerl = TCPCommunication::new(&prefix, address, address_store_path)?;
         Ok(Self {
-            kerl: talking_kerl,
+            comm: talking_kerl,
             keri,
         })
     }
@@ -63,7 +63,7 @@ impl Entity {
     pub fn get_did_doc(&self, id: &str) -> Result<String, Error> {
         let pref = id.parse().map_err(|e| Error::KeriError(e))?;
         let state = self
-            .kerl
+            .comm
             .get_state(&pref, &self.keri)?
             .ok_or(Error::Generic("There is no state.".into()))?;
         serde_json::to_string(&state_to_did_document(state, "keri"))
@@ -100,7 +100,7 @@ impl Entity {
     }
 
     pub fn run(&self) -> Result<(), Error> {
-        self.kerl.run(&self.kerl.get_address(), &self.keri)?;
+        self.comm.run(&self.comm.get_address(), &self.keri)?;
         Ok(())
     }
 }
@@ -124,8 +124,6 @@ mod tests {
         // "xFfJTcSuEE11FINfXMqWttkZGnUZ8KaREhrnyAXTsjw=",
         // "Lq-w1UKkdrppwZzGTtz4PWYEeWm0-sDHzOv5sq96xJY="
         let _ent = Entity::new(path, "localhost:3333", &seeds.trim(), ".");
-
-        // assert_eq!(ent.prefix, None);
 
         Ok(())
     }

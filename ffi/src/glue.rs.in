@@ -10,6 +10,7 @@ foreign_class!(
         fn Entity::get_did_doc(&self, id: &str) -> Result<String, Error>;
         fn Entity::update_keys(&mut self) -> Result<(), Error> ;
         fn Entity::append(&mut self, msg: &str) -> Result<(), Error>;
+        
         fn Entity::run(&self) -> Result<(), Error>;
         fn Entity::get_prefix(&self) -> Result<String, Error>;
         fn Entity::get_kerl(&self) -> Result<String, Error>;
