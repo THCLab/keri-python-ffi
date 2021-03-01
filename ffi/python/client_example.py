@@ -1,7 +1,5 @@
 from libs.libkel_utils import Entity
 import tempfile
-import ed25519
-import base64
 
 bob_temp_dir = tempfile.TemporaryDirectory()
 seeds = "[\"cwFTk-wgk3ZT2buPRIbK-zxgPx-TKbaegQvPEivN90Y=\", \"lntkt3u6dDgiQxTATr01dy8M72uuaZEf9eTdM-70Gk8=\"]"

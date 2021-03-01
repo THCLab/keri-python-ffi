@@ -1,7 +1,5 @@
 from libs.libkel_utils import Entity
 import tempfile
-import ed25519
-import base64
 # ==========================================
 # Eve
 # ==========================================
