@@ -6,4 +6,6 @@ LIB_NAME="kel_utils"
 cd $BASE_DIR
 cargo build --release
 
+mkdir -p "$BASE_DIR/ffi/python/libs/"
+
 cp $BASE_DIR"/target/release/lib${LIB_NAME}.so" "$BASE_DIR/ffi/python/libs/lib${LIB_NAME}.so"
