@@ -23,8 +23,7 @@ signature = issuer.sign(message)
 b64_signature = base64.urlsafe_b64encode(bytes(signature)).decode("utf-8")
 
 crudential = {"issuer": issuer_id, "msg": message, "signature": b64_signature}
-print("Then construct something like a VC: \n" + json.dumps(crudential, indent=4, sort_keys=True) + "\n")
-print("Then sends it to other instance.")
+print("Create VC: \n" + json.dumps(crudential, indent=4, sort_keys=True) + "\n")
 
 issuer.verify(issuer.get_prefix(), message, b64_signature)
 

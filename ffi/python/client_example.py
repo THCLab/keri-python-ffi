@@ -23,8 +23,9 @@ print("Diddoc after rotation: ")
 ddoc = bob.get_did_doc(bob.get_prefix())
 print( json.dumps(json.loads(ddoc), indent=4, sort_keys=True) + "\n")
 
+eve_ddoc = bob.get_did_doc("DSuhyBcPZEZLK-fcw5tzHn2N46wRCG_ZOoeKtWTOunRA")
 print("Eve's Diddoc: ")
-print(bob.get_did_doc("DSuhyBcPZEZLK-fcw5tzHn2N46wRCG_ZOoeKtWTOunRA") + "\n")
+print(json.dumps(json.loads(eve_ddoc), indent=4, sort_keys=True) + "\n")
 
 # append ixn to kerl
 print("Appending ixn to kel...\n")

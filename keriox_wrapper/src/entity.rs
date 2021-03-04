@@ -98,6 +98,7 @@ impl Entity {
 
     pub fn update_keys(&mut self) -> Result<(), Error> {
         self.keri.rotate()?;
+        self.wallet.rotate()?;
         Ok(())
     }
 
@@ -125,8 +126,9 @@ impl Entity {
             .ok_or(Error::Generic("There is no prefix".into()))
     }
 
-    pub fn run(&self) -> Result<(), Error> {
-        self.comm.run(&self.comm.get_address(), &self.keri)?;
+    pub fn run(&mut self) -> Result<(), Error> {
+        self.comm
+            .run(&self.comm.get_address(), &mut self.keri, &mut self.wallet)?;
         Ok(())
     }
 
@@ -156,7 +158,7 @@ impl Entity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::{tempdir};
+    use tempfile::tempdir;
 
     #[test]
     fn test_signing() -> Result<(), Error> {
@@ -172,7 +174,8 @@ mod tests {
         // "KuYMe09COczwf2nIoD5AE119n7GLFOVFlNLxZcKuswc=",
         // "xFfJTcSuEE11FINfXMqWttkZGnUZ8KaREhrnyAXTsjw=",
         // "Lq-w1UKkdrppwZzGTtz4PWYEeWm0-sDHzOv5sq96xJY="
-        let mut ent = Entity::new_from_seeds(path, "localhost:3333", seeds.trim(), &addresses_path)?;
+        let mut ent =
+            Entity::new_from_seeds(path, "localhost:3333", seeds.trim(), &addresses_path)?;
 
         let msg = "hello there!";
         let signature = ent.sign(msg)?;

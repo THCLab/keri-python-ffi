@@ -1,8 +1,11 @@
 use crate::{address_provider::AddressProvider, error::Error, wallet_wrapper::WalletWrapper};
+use base64::URL_SAFE;
 use keri::{
     database::lmdb::LmdbEventDatabase,
+    event_message::parse,
     keri::Keri,
     prefix::{IdentifierPrefix, Prefix},
+    signer::KeyManager,
     state::IdentifierState,
 };
 use std::{
@@ -45,7 +48,8 @@ impl TCPCommunication {
         let n = stream
             .read(&mut buf)
             .map_err(|e| Error::CommunicationError(e))?;
-        // println!("Got:\n{}\n", from_utf8(&buf[..n]).unwrap());
+        println!("Got issuers kerl: ");
+        TCPCommunication::print_msg(&buf[..n]);
 
         let res = keri.respond(&buf[..n])?;
 
@@ -73,7 +77,8 @@ impl TCPCommunication {
     pub fn run(
         &self,
         address: &str,
-        keri: &Keri<LmdbEventDatabase, WalletWrapper>,
+        keri: &mut Keri<LmdbEventDatabase, WalletWrapper>,
+        wallet: &mut WalletWrapper,
     ) -> Result<(), Error> {
         let listener =
             TcpListener::bind(&address.to_string()).map_err(|e| Error::CommunicationError(e))?;
@@ -105,34 +110,88 @@ impl TCPCommunication {
 
                 let msg = &buf[..n];
 
-                let keri_pref = keri
-                    .get_state()?
-                    .map(|s| s.prefix.to_str())
-                    .ok_or(Error::Generic("Error".to_string()))?;
-                if &msg[30..74] != keri_pref.as_bytes() {
+                if &msg[0..3] == "ROT".as_bytes() {
+                    println!("\nRotate keys");
+                    keri.rotate()?;
+                    wallet.rotate()?;
+                    let current_pk = wallet.public_key();
+
                     println!(
-                        "\nPairing with did:keri:{}\n",
-                        std::str::from_utf8(&msg[30..74]).unwrap()
+                        "Current pk: {}",
+                        base64::encode_config(current_pk, URL_SAFE)
                     );
+                } else {
+                    let keri_pref = keri
+                        .get_state()?
+                        .map(|s| s.prefix.to_str())
+                        .ok_or(Error::Generic("Error".to_string()))?;
+
+                    if &msg[30..74] != keri_pref.as_bytes() {
+                        println!(
+                            "\nPairing with did:keri:{}\nGot events:",
+                            std::str::from_utf8(&msg[30..74]).unwrap()
+                        );
+                    }
+
+                    TCPCommunication::print_msg(msg);
+
+                    let receipt = keri.respond(msg).expect("failed while event processing");
+
+                    match socket.write_all(&receipt) {
+                        Err(e) => match e.kind() {
+                            io::ErrorKind::WouldBlock => {
+                                // println!("would have blocked");
+                                break;
+                            }
+                            _ => return Err(Error::CommunicationError(e)),
+                        },
+                        Ok(_) => {}
+                    };
+                    // println!(
+                    //     "Respond with {}\n",
+                    //     String::from_utf8(receipt.clone())
+                    //         .map_err(|e| Error::StringFromUtf8Error(e))?
+                    // );
                 }
+            }
+        }
+    }
 
-                let receipt = keri.respond(msg).expect("failed while event processing");
-
-                match socket.write_all(&receipt) {
-                    Err(e) => match e.kind() {
-                        io::ErrorKind::WouldBlock => {
-                            // println!("would have blocked");
-                            break;
-                        }
-                        _ => return Err(Error::CommunicationError(e)),
-                    },
-                    Ok(_) => {}
-                };
-                // println!(
-                //     "Respond with {}\n",
-                //     String::from_utf8(receipt.clone())
-                //         .map_err(|e| Error::StringFromUtf8Error(e))?
-                // );
+    fn print_msg(msg: &[u8]) {
+        let s = parse::signed_event_stream(msg).unwrap().1;
+        for ev in s {
+            match ev {
+                parse::Deserialized::Event(e) => {
+                    let t = match e.event.event.event.event_data {
+                        keri::event::event_data::EventData::Icp(e) => [
+                            "inception, current key:",
+                            &e.key_config
+                                .public_keys
+                                .iter()
+                                .map(|k| k.to_str())
+                                .collect::<Vec<_>>()
+                                .join(", "),
+                        ]
+                        .join(" "),
+                        keri::event::event_data::EventData::Rot(e) => [
+                            "rotation, current key:",
+                            &e.key_config
+                                .public_keys
+                                .iter()
+                                .map(|k| k.to_str())
+                                .collect::<Vec<_>>()
+                                .join(", "),
+                        ]
+                        .join(" "),
+                        keri::event::event_data::EventData::Ixn(_) => "interaction".to_string(),
+                        _ => "".to_string(),
+                    };
+                    println!("\tsn: {}, type: {}", e.event.event.event.sn, t);
+                }
+                parse::Deserialized::Vrc(_) => {
+                    // println!("\ttype: {}", "receipt");
+                }
+                parse::Deserialized::Rct(_) => {}
             }
         }
     }
@@ -145,7 +204,7 @@ impl TCPCommunication {
         match keri.get_state_for_prefix(id)? {
             Some(state) => Ok(Some(state)),
             None => {
-                println!("\nPairing with did:keri:{}\n", id.to_str());
+                println!("\nPairing with did:keri:{}", id.to_str());
                 let kerl = keri
                     .get_kerl()?
                     .ok_or(Error::Generic("Can't find kerl".into()))?;
