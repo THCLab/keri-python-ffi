@@ -58,7 +58,7 @@ impl TCPCommunication {
             match stream.read(&mut buf) {
                 Err(e) => match e.kind() {
                     io::ErrorKind::WouldBlock => {
-                        println!("would have blocked");
+                        // println!("would have blocked");
                     }
                     _ => panic!("Got an error: {}", e),
                 },
@@ -95,7 +95,7 @@ impl TCPCommunication {
                 let n = match socket.read(&mut buf) {
                     Err(e) => match e.kind() {
                         io::ErrorKind::WouldBlock => {
-                            println!("would have blocked");
+                            // println!("would have blocked");
                             break;
                         }
                         _ => return Err(Error::CommunicationError(e)),
@@ -104,27 +104,35 @@ impl TCPCommunication {
                 };
 
                 let msg = &buf[..n];
-                println!(
-                    "Got: \n {}\n",
-                    String::from_utf8(msg.to_vec()).map_err(|e| Error::StringFromUtf8Error(e))?
-                );
+
+                let keri_pref = keri
+                    .get_state()?
+                    .map(|s| s.prefix.to_str())
+                    .ok_or(Error::Generic("Error".to_string()))?;
+                if &msg[30..74] != keri_pref.as_bytes() {
+                    println!(
+                        "\nPairing with did:keri:{}\n",
+                        std::str::from_utf8(&msg[30..74]).unwrap()
+                    );
+                }
+
                 let receipt = keri.respond(msg).expect("failed while event processing");
 
                 match socket.write_all(&receipt) {
                     Err(e) => match e.kind() {
                         io::ErrorKind::WouldBlock => {
-                            println!("would have blocked");
+                            // println!("would have blocked");
                             break;
                         }
                         _ => return Err(Error::CommunicationError(e)),
                     },
                     Ok(_) => {}
                 };
-                println!(
-                    "Respond with {}\n",
-                    String::from_utf8(receipt.clone())
-                        .map_err(|e| Error::StringFromUtf8Error(e))?
-                );
+                // println!(
+                //     "Respond with {}\n",
+                //     String::from_utf8(receipt.clone())
+                //         .map_err(|e| Error::StringFromUtf8Error(e))?
+                // );
             }
         }
     }
@@ -137,6 +145,7 @@ impl TCPCommunication {
         match keri.get_state_for_prefix(id)? {
             Some(state) => Ok(Some(state)),
             None => {
+                println!("\nPairing with did:keri:{}\n", id.to_str());
                 let kerl = keri
                     .get_kerl()?
                     .ok_or(Error::Generic("Can't find kerl".into()))?;

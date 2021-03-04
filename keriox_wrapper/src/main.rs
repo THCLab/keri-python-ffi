@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 \"6zz7M08-HQSFq92sJ8KJOT2cZ47x7pXFQLPB0pckB3Q=\"
                 ]";
         let ent_adr = "localhost:3333";
-        let mut ent = Entity::new(path, ent_adr, &seeds.trim(), ap_path)?;
+        let mut ent = Entity::new_from_seeds(path, ent_adr, &seeds.trim(), ap_path)?;
 
         println!("\n{}\n", ent.get_did_doc(&ent.get_prefix()?)?);
         ent.update_keys()?;
@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 \"lntkt3u6dDgiQxTATr01dy8M72uuaZEf9eTdM-70Gk8=\"
             ]";
         let eve_adr = "localhost:2222";
-        let ent = Entity::new(path, eve_adr, &seeds.trim(), ap_path)?;
+        let ent = Entity::new_from_seeds(path, eve_adr, &seeds.trim(), ap_path)?;
         println!("{}", ent.get_prefix()?);
         ent.run()?;
     }

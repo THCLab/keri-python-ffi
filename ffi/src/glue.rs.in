@@ -6,10 +6,14 @@ foreign_class!(
     class Entity {
         self_type Entity;
         private constructor = empty;
-        fn Entity::new(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Result<Entity, Error>;
+        fn Entity::new(db_path: &str, address: &str, address_store_path: &str) -> Result<Entity, Error>;
+        fn Entity::new_from_seeds(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Result<Entity, Error>;
         fn Entity::get_did_doc(&self, id: &str) -> Result<String, Error>;
         fn Entity::update_keys(&mut self) -> Result<(), Error> ;
         fn Entity::append(&mut self, msg: &str) -> Result<(), Error>;
+
+        fn Entity::sign(&self, msg: &str) -> Result<Vec<u8>, Error>;
+        fn Entity::verify(&self, issuer_id: &str, msg: &str, signature: &str) -> Result<bool, Error>;
         
         fn Entity::run(&self) -> Result<(), Error>;
         fn Entity::get_prefix(&self) -> Result<String, Error>;
