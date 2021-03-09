@@ -5,9 +5,6 @@ from libs.libkel_utils import Entity
 import tempfile
 import base64
 import json
-from wonderwords import RandomSentence
-
-s = RandomSentence()
 
 issuer_temp_dir = tempfile.TemporaryDirectory()
 temp_address_provider = "./adr_db"
@@ -15,7 +12,7 @@ issuer = Entity.new(issuer_temp_dir.name, 'localhost:5621', temp_address_provide
 print("\nIssuer: did:keri:" + issuer.get_prefix() + "\n")
 
 issuer_id = ":".join(["did", "keri", issuer.get_prefix()])
-message = s.sentence()
+message = "hello there" 
 
 print("Issuer signs the message: " + message + "\n")
 
