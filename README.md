@@ -20,6 +20,10 @@ Open another termianl and run:
 
     python3 holder.py
 
+To rotate the key on the issuer side send `ROT` command over TCP
+
+    echo ROT | netcat localhost 5621
+
 For more example check `ffi/python` folder.
 
 ## Demo
