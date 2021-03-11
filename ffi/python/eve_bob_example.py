@@ -23,20 +23,18 @@ print("Diddoc after rotation: ")
 ddoc = bob.get_did_doc(bob.get_prefix())
 print( json.dumps(json.loads(ddoc), indent=4, sort_keys=True) + "\n")
 
-eve_ddoc = bob.get_did_doc("DSuhyBcPZEZLK-fcw5tzHn2N46wRCG_ZOoeKtWTOunRA")
+eve_temp_dir = tempfile.TemporaryDirectory()
+seeds = "[\"rwXoACJgOleVZ2PY7kXn7rA0II0mHYDhc6WrBH8fDAc=\", \"6zz7M08-HQSFq92sJ8KJOT2cZ47x7pXFQLPB0pckB3Q=\"]"
+eve = Entity.new_from_seeds(eve_temp_dir.name, 'localhost:5621', seeds, temp_provider)
+print("\nEve's prefix " + eve.get_prefix())
+
+bob.run()
+eve.run()
+
+eve_pref = str(eve.get_prefix())
+eve_ddoc = bob.get_did_doc(eve_pref)
 print("Eve's Diddoc: ")
 print(json.dumps(json.loads(eve_ddoc), indent=4, sort_keys=True) + "\n")
 
-# append ixn to kerl
-print("Appending ixn to kel...\n")
-bob.append("hi")
-
-print("Bob's KERL: ")
-print(bob.get_kerl() + "\n")
-
-# get did doc.
-print("Diddoc after interaction: ")
-ddoc = bob.get_did_doc(bob.get_prefix())
-print(json.dumps(json.loads(ddoc), indent=4, sort_keys=True) + "\n")
-
 bob_temp_dir.cleanup()
+eve_temp_dir.cleanup()

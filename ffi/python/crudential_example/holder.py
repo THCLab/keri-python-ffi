@@ -12,7 +12,7 @@ verifier = Entity.new(verifier_temp_dir.name, 'localhost:3456', temp_provider)
 
 print("\nHolder: did:keri:" + verifier.get_prefix() + "\n")
 
-with open('buffor.py', 'r') as file:
+with open('buffor', 'r') as file:
     crud = file.read()
 crudential = json.loads(crud)
 print("Got VC: \n" + json.dumps(crudential, indent=4, sort_keys=True))

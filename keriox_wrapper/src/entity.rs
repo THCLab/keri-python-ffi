@@ -9,28 +9,76 @@ use keri::{
     prefix::{IdentifierPrefix, Prefix},
     signer::KeyManager,
 };
-use keri::{derivation::basic::Basic, prefix::BasicPrefix};
-use std::path::Path;
-use ursa::keys::PublicKey;
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+    thread,
+};
 
-pub enum KeyType {
-    Ed25519Sha512,
+#[derive(Clone)]
+pub struct SharedEntity {
+    ent: Arc<Mutex<Entity>>,
 }
 
-pub struct Key {
-    key: Vec<u8>,
-    key_type: KeyType,
-}
-
-impl Key {
-    pub fn new(key: Vec<u8>, key_type: KeyType) -> Key {
-        Self { key, key_type }
+impl SharedEntity {
+    pub fn new(db_path: &str, address: &str, address_store_path: &str) -> Result<Self, Error> {
+        Ok(Self {
+            ent: Arc::new(Mutex::new(
+                Entity::new(db_path, address, address_store_path).unwrap(),
+            )),
+        })
     }
-    pub fn derive_key_prefix(&self) -> BasicPrefix {
-        let pk = PublicKey(self.key.clone());
-        match self.key_type {
-            KeyType::Ed25519Sha512 => Basic::Ed25519.derive(pk),
-        }
+
+    pub fn new_from_seeds(
+        db_path: &str,
+        address: &str,
+        seeds: &str,
+        address_store_path: &str,
+    ) -> Result<Self, Error> {
+        Ok(Self {
+            ent: Arc::new(Mutex::new(
+                Entity::new_from_seeds(db_path, address, seeds, address_store_path).unwrap(),
+            )),
+        })
+    }
+
+    pub fn get_did_doc(&self, id: &str) -> Result<String, Error> {
+        let e = self.ent.lock().unwrap();
+        e.get_did_doc(id)
+    }
+
+    pub fn update_keys(&mut self) -> Result<(), Error> {
+        let mut e = self.ent.lock().unwrap();
+        e.update_keys()
+    }
+
+    pub fn append(&mut self, msg: &str) -> Result<(), Error> {
+        let mut e = self.ent.lock().unwrap();
+        e.append(msg)
+    }
+
+    pub fn get_kerl(&self) -> Result<String, Error> {
+        let e = self.ent.lock().unwrap();
+        e.get_kerl()
+    }
+
+    pub fn get_prefix(&self) -> Result<String, Error> {
+        let e = self.ent.lock().unwrap();
+        e.get_prefix()
+    }
+
+    pub fn run(self) -> Result<(), Error> {
+        Entity::run(self.ent)
+    }
+
+    pub fn sign(&self, msg: &str) -> Result<Vec<u8>, Error> {
+        let e = self.ent.lock().unwrap();
+        e.sign(msg)
+    }
+
+    pub fn verify(&self, issuer_id: &str, msg: &str, signature: &str) -> Result<bool, Error> {
+        let e = self.ent.lock().unwrap();
+        e.verify(issuer_id, msg, signature)
     }
 }
 
@@ -50,7 +98,7 @@ impl Entity {
             WalletWrapper::to_wallet(enc_wallet.clone(), "pass")?,
             IdentifierPrefix::default(),
         )?;
-        let icp = keri.incept()?; //process(icp.as_bytes());
+        let icp = keri.incept()?;
 
         let prefix = icp.event_message.event.prefix.to_str();
         let wallet = WalletWrapper::to_wallet(enc_wallet, "pass")?;
@@ -75,7 +123,7 @@ impl Entity {
             .map_err(|e| Error::Generic(e.to_string()))?;
         let wallet = WalletWrapper::incept_wallet_from_seed(seeds.clone())?;
         let mut keri = Keri::new(db, wallet, IdentifierPrefix::default())?;
-        let icp = keri.incept()?; //process(icp.as_bytes());
+        let icp = keri.incept()?;
         let prefix = icp.event_message.event.prefix.to_str();
 
         let talking_kerl = TCPCommunication::new(&prefix, address, address_store_path)?;
@@ -115,7 +163,8 @@ impl Entity {
             .map_err(|e| Error::KeriError(e))?
             .unwrap_or(vec![]);
 
-        String::from_utf8(kerl).map_err(|e| Error::StringFromUtf8Error(e))
+        // Format kel
+        Ok(TCPCommunication::format_event_stream(&kerl, false))
     }
 
     pub fn get_prefix(&self) -> Result<String, Error> {
@@ -126,10 +175,20 @@ impl Entity {
             .ok_or(Error::Generic("There is no prefix".into()))
     }
 
-    pub fn run(&mut self) -> Result<(), Error> {
-        self.comm
-            .run(&self.comm.get_address(), &mut self.keri, &mut self.wallet)?;
+    pub fn run(ent: Arc<Mutex<Entity>>) -> Result<(), Error> {
+        let entity = ent.clone();
+        let e = entity.lock().unwrap();
+        let address = e.comm.get_address();
+        thread::spawn(move || {
+            TCPCommunication::run(address, ent).unwrap();
+        });
         Ok(())
+    }
+
+    pub fn respond(&self, msg: &[u8]) -> Result<Vec<u8>, Error> {
+        self.keri
+            .respond(msg)
+            .map_err(|e| Error::Generic(e.to_string()))
     }
 
     pub fn sign(&self, msg: &str) -> Result<Vec<u8>, Error> {

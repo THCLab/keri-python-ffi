@@ -1,23 +1,23 @@
 use std::fmt;
-use keriox_wrapper::entity::{Entity};
+use keriox_wrapper::entity::{SharedEntity};
 
 foreign_class!(
     #[derive(Clone)]
     class Entity {
-        self_type Entity;
+        self_type SharedEntity;
         private constructor = empty;
-        fn Entity::new(db_path: &str, address: &str, address_store_path: &str) -> Result<Entity, Error>;
-        fn Entity::new_from_seeds(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Result<Entity, Error>;
-        fn Entity::get_did_doc(&self, id: &str) -> Result<String, Error>;
-        fn Entity::update_keys(&mut self) -> Result<(), Error> ;
-        fn Entity::append(&mut self, msg: &str) -> Result<(), Error>;
+        fn SharedEntity::new(db_path: &str, address: &str, address_store_path: &str) -> Result<SharedEntity, Error>;
+        fn SharedEntity::new_from_seeds(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Result<SharedEntity, Error>;
+        fn SharedEntity::get_did_doc(&self, id: &str) -> Result<String, Error>;
+        fn SharedEntity::update_keys(&mut self) -> Result<(), Error> ;
+        fn SharedEntity::append(&mut self, msg: &str) -> Result<(), Error>;
 
-        fn Entity::sign(&self, msg: &str) -> Result<Vec<u8>, Error>;
-        fn Entity::verify(&self, issuer_id: &str, msg: &str, signature: &str) -> Result<bool, Error>;
+        fn SharedEntity::sign(&self, msg: &str) -> Result<Vec<u8>, Error>;
+        fn SharedEntity::verify(&self, issuer_id: &str, msg: &str, signature: &str) -> Result<bool, Error>;
         
-        fn Entity::run(&mut self) -> Result<(), Error>;
-        fn Entity::get_prefix(&self) -> Result<String, Error>;
-        fn Entity::get_kerl(&self) -> Result<String, Error>;
+        fn SharedEntity::run(self) -> Result<(), Error>;
+        fn SharedEntity::get_prefix(&self) -> Result<String, Error>;
+        fn SharedEntity::get_kerl(&self) -> Result<String, Error>;
     }
 );
 

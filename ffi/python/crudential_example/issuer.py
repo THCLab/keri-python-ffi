@@ -24,7 +24,9 @@ print("Create VC: \n" + json.dumps(crudential, indent=4, sort_keys=True) + "\n")
 
 issuer.verify(issuer.get_prefix(), message, b64_signature)
 
-with open('buffor.py', 'w') as file:
+with open('buffor', 'w') as file:
     file.write(json.dumps(crudential))
 
 issuer.run()
+while(True):
+  pass
