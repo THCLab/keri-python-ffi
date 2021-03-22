@@ -1,23 +1,28 @@
 use std::fmt;
-use keriox_wrapper::entity::{SharedEntity};
+use keriox_wrapper::controller::{SharedController};
 
 foreign_class!(
     #[derive(Clone)]
-    class Entity {
-        self_type SharedEntity;
+    class Controller {
+        self_type SharedController;
         private constructor = empty;
-        fn SharedEntity::new(db_path: &str, address: &str, address_store_path: &str) -> Result<SharedEntity, Error>;
-        fn SharedEntity::new_from_seeds(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Result<SharedEntity, Error>;
-        fn SharedEntity::get_did_doc(&self, id: &str) -> Result<String, Error>;
-        fn SharedEntity::update_keys(&mut self) -> Result<(), Error> ;
-        fn SharedEntity::append(&mut self, msg: &str) -> Result<(), Error>;
+        fn SharedController::new(db_path: &str, address: &str, address_store_path: &str) -> Result<SharedController, Error>;
+        // fn SharedEntity::new_from_seeds(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Result<SharedEntity, Error>;
+        fn SharedController::get_did_doc(&self, id: &str) -> Result<String, Error>;
+        fn SharedController::update_keys(&mut self) -> Result<(), Error> ;
+        // fn SharedController::append(&mut self, msg: &str) -> Result<(), Error>;
 
-        fn SharedEntity::sign(&self, msg: &str) -> Result<Vec<u8>, Error>;
-        fn SharedEntity::verify(&self, issuer_id: &str, msg: &str, signature: &str) -> Result<bool, Error>;
+        fn SharedController::sign(&self, msg: &str) -> Result<Vec<u8>, Error>;
+        fn SharedController::verify(&self, issuer_id: &str, msg: &str, signature: &str) -> Result<bool, Error>;
         
-        fn SharedEntity::run(self) -> Result<(), Error>;
-        fn SharedEntity::get_prefix(&self) -> Result<String, Error>;
-        fn SharedEntity::get_kerl(&self) -> Result<String, Error>;
+        fn SharedController::add_identifier(&mut self, db_path: &str) -> Result<(), Error>;
+        fn SharedController::remove_identifier(&mut self, id: &str) -> Result<(), Error>;
+        fn SharedController::current_identifiers(&self) -> Result<Vec<String>, Error>;
+        fn SharedController::sign_by(&self, id: &str, msg: &str) -> Result<Vec<u8>, Error>;
+
+        fn SharedController::run(self) -> Result<(), Error>;
+        fn SharedController::get_prefix(&self) -> Result<String, Error>;
+        fn SharedController::get_kerl(&self) -> Result<String, Error>;
     }
 );
 

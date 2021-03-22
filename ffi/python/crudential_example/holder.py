@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 import sys
 sys.path.append("..")
-from libs.libkel_utils import Entity
+from libs.libkel_utils import Controller 
 import tempfile
 import base64
 import json
 
 verifier_temp_dir = tempfile.TemporaryDirectory()
 temp_provider = "./adr_db"
-verifier = Entity.new(verifier_temp_dir.name, 'localhost:3456', temp_provider)
+verifier = Controller.new(verifier_temp_dir.name, 'localhost:3456', temp_provider)
 
 print("\nHolder: did:keri:" + verifier.get_prefix() + "\n")
 

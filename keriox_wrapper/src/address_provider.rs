@@ -13,7 +13,6 @@ impl AddressProvider {
         let db: FileDatabase<HashMap<String, String>, Ron> =
             FileDatabase::load_from_path_or(db_path, HashMap::new())
                 .map_err(|e| Error::AddressProviderError(e))?;
-
         Ok(Self { storage: db })
     }
     pub fn register(&self, id: &str, address: &str) -> Result<(), Error> {

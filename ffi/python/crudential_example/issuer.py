@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 import sys
 sys.path.append("..")
-from libs.libkel_utils import Entity
+from libs.libkel_utils import Controller
 import tempfile
 import base64
 import json
 
 issuer_temp_dir = tempfile.TemporaryDirectory()
 temp_address_provider = "./adr_db"
-issuer = Entity.new(issuer_temp_dir.name, 'localhost:5621', temp_address_provider)
+issuer = Controller.new(issuer_temp_dir.name, 'localhost:5621', temp_address_provider)
 print("\nIssuer: did:keri:" + issuer.get_prefix() + "\n")
 
 issuer_id = ":".join(["did", "keri", issuer.get_prefix()])
@@ -29,4 +29,9 @@ with open('buffor', 'w') as file:
 
 issuer.run()
 while(True):
-  pass
+  val = input("Available commands:\n\t rot - rotate keys\n" )
+
+  if val == "rot":
+    # rotate keys
+    issuer.update_keys()
+    print("Keys updated\n")

@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 import sys
 sys.path.append("..")
-from libs.libkel_utils import Entity
+from libs.libkel_utils import Controller 
 import tempfile
 import base64
 import json
 import random
+import os
 
 temp_dir = tempfile.TemporaryDirectory()
 temp_address_provider = "./adr_db"
 port = str(random.randint(1000, 9999))
 adress = ":".join(["localhost", port])
-entity = Entity.new(temp_dir.name, adress, temp_address_provider)
+entity = Controller.new(temp_dir.name, adress, temp_address_provider)
 print("\nEntity: did:keri:" + entity.get_prefix() + "\n")
 
 entity_id = ":".join(["did", "keri", entity.get_prefix()])
@@ -65,7 +66,9 @@ while(True):
   elif val[:6] == "diddoc":
     # get did document for given prefix
     inp = val.split(" ")
-    ddoc = entity.get_did_doc(inp[1])
+    ddoc = entity.get_did_doc(inp[1].strip())
     formated_ddoc = json.dumps(json.loads(ddoc), indent=4, sort_keys=True)
     print("\n" + "did document: \n" + formated_ddoc + "\n")
 
+temp_dir.cleanup()
+dir.cleanup()

@@ -59,7 +59,6 @@ impl TCPCommunication {
             stream
                 .write(&msg)
                 .map_err(|e| Error::CommunicationError(e))?;
-            // println!("Sent: {}", String::from_utf8(res.clone()).unwrap());
 
             match stream.read(&mut buf) {
                 Err(e) => match e.kind() {
@@ -105,6 +104,7 @@ impl TCPCommunication {
                 };
 
                 let msg = &buf[..n];
+
                 {
                     let k = controller.lock().unwrap();
 
