@@ -1,6 +1,4 @@
-use std::{
-    error::Error,
-};
+use std::error::Error;
 
 use keriox_wrapper::controller::SharedController;
 

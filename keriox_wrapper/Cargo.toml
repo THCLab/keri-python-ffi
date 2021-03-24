@@ -17,6 +17,8 @@ tempfile = "3"
 jolocom_native_utils = { git = "https://github.com/THCLab/rust-multi-target", branch = "update_wallet", path = "./rust/jolocom_native_utils" }
 clap = "2.33.3"
 rand = "0.7.3"
+ed25519-dalek = "1.0.1"
+blake3 = "0.3.7"
 
 [dependencies.rustbreak]
 version = "2"

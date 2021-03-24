@@ -136,20 +136,17 @@ impl Controller {
         let ent = Entity::new(db_path)?;
         let id = ent.get_prefix()?;
         self.comm.register(&id)?;
-        match self.entities
-            .insert(id, ent)
-            {
-                Some(_) => {Err(Error::Generic("Entity already exist".into()))}
-                None => {Ok(())}
-            }
+        match self.entities.insert(id, ent) {
+            Some(_) => Err(Error::Generic("Entity already exist".into())),
+            None => Ok(()),
+        }
     }
 
     pub fn remove_entity(&mut self, id: &str) -> Result<(), Error> {
-        match self.entities
-            .remove(id.into()) {
-                Some(_) => {Ok(())}
-                None => {Err(Error::Generic("No such entity".into()))}
-            }
+        match self.entities.remove(id.into()) {
+            Some(_) => Ok(()),
+            None => Err(Error::Generic("No such entity".into())),
+        }
     }
 
     pub fn sign_by(&self, id: &str, msg: &str) -> Result<Vec<u8>, Error> {
@@ -219,10 +216,13 @@ impl Controller {
             Some(state) => Ok(Some(state)),
             None => {
                 let kerl = entity.get_kerl()?;
-                let addr = self
-                    .comm
-                    .get_address_for_prefix(&id.to_str())?
-                    .ok_or(Error::Generic(format!("Can't find address for prefix {}", id.to_str())))?;
+                let addr =
+                    self.comm
+                        .get_address_for_prefix(&id.to_str())?
+                        .ok_or(Error::Generic(format!(
+                            "Can't find address for prefix {}",
+                            id.to_str()
+                        )))?;
                 TCPCommunication::send(&kerl, &addr, &id.to_str(), entity)?;
                 Ok(entity.get_state_for_prefix(id)?)
             }
