@@ -7,11 +7,21 @@ use std::{
 
 use jolocom_native_utils::did_document::{state_to_did_document, DIDDocument};
 use keri::{
+    derivation::self_addressing::SelfAddressing,
+    event::sections::seal::EventSeal,
     prefix::{IdentifierPrefix, Prefix},
     state::IdentifierState,
 };
 
-use crate::{entity::Entity, error::Error, tcp_communication::TCPCommunication};
+use crate::{
+    entity::Entity,
+    error::Error,
+    tcp_communication::TCPCommunication,
+    tel::{
+        tel_event::{Operation, TelEvent},
+        tel_manager::TelManager,
+    },
+};
 
 #[derive(Clone)]
 pub struct SharedController {
@@ -109,6 +119,7 @@ pub struct Controller {
     main_entity: Entity,
     comm: TCPCommunication,
     entities: HashMap<String, Entity>,
+    tels: TelManager,
 }
 
 impl Controller {
@@ -129,6 +140,7 @@ impl Controller {
             main_entity: ent,
             comm,
             entities,
+            tels: TelManager::new(),
         }
     }
 
@@ -168,6 +180,10 @@ impl Controller {
         self.main_entity.update_keys()
     }
 
+    pub fn append(&mut self, msg: &str) -> Result<(), Error> {
+        self.main_entity.append(msg)
+    }
+
     pub fn get_kerl(&self) -> Result<Vec<u8>, Error> {
         self.main_entity.get_kerl()
     }
@@ -178,6 +194,46 @@ impl Controller {
             .get_state(&pref, ent)?
             .ok_or(Error::Generic("There is no state.".into()))?;
         Ok(state_to_did_document(state, "keri"))
+    }
+
+    fn make_tel_event(&mut self, vc: &str, operation: Operation) -> Result<(), Error> {
+        // Add interaction event with vc seal to kel
+        let vc_digest = blake3::hash(vc.as_bytes()).as_bytes().to_vec();
+        self.main_entity.append(vc)?;
+
+        // Create event seal.
+        let event_seal = {
+            let prefix = self.main_entity.get_prefix()?.parse()?;
+            let state = self.get_state(&prefix, &self.main_entity)?.unwrap();
+            let sn = state.sn;
+            let last = state.last;
+            let event_digest = SelfAddressing::Blake3_256.derive(&last);
+
+            EventSeal {
+                prefix,
+                sn,
+                event_digest,
+            }
+        };
+
+        // Then create issuance event, with that seal.
+        let mut isev = TelEvent::new(event_seal, operation);
+        // Sign this event with current keys.
+        let msg = serde_json::to_vec(&isev).unwrap();
+        let signature = self.sign(from_utf8(&msg).unwrap()).unwrap();
+        isev.attach_signature(&signature);
+
+        // Update tels
+        self.tels.process_tel_event(&vc_digest, isev)?;
+        Ok(())
+    }
+
+    pub fn issue_vc(&mut self, vc: &str) -> Result<(), Error> {
+        self.make_tel_event(vc, Operation::Issue)
+    }
+
+    pub fn revoke_vc(&mut self, vc: &str) -> Result<(), Error> {
+        self.make_tel_event(vc, Operation::Revoke)
     }
 
     pub fn run(controller: Arc<Mutex<Controller>>) -> Result<(), Error> {
@@ -228,4 +284,52 @@ impl Controller {
             }
         }
     }
+}
+
+#[test]
+fn test_vc() -> Result<(), Error> {
+    use tempfile::tempdir;
+    use crate::tel::tel_event::TelState;
+    let db_dir = tempdir()?;
+    let db_path = db_dir.path().to_str().unwrap();
+    let adr_store_path = [db_dir.path().to_str().unwrap(), "adr"].join("");
+
+    let mut cont = Controller::new(db_path, "localhost:1212", &adr_store_path);
+
+    // Compute vc related stuff
+    let vc = "Some vc";
+    let vc_digest = blake3::hash(vc.as_bytes()).as_bytes().to_vec();
+    let vc_signature = cont.sign(vc)?;
+
+    cont.issue_vc(vc)?;
+
+    let vc_state = cont.tels.get_state(&vc_digest)?;
+    assert!(matches!(vc_state, TelState::Issued(_)));
+
+    let ver = {
+        let tel = cont.tels.get_tel(&vc_digest)?;
+        let kerl = cont.get_kerl()?.clone();
+        Entity::verify_vc(vc.as_bytes(), &vc_signature, tel, &kerl)?
+    };
+    assert!(ver);
+
+    // Rotate keys and verify vc again.
+    cont.update_keys()?;
+    let ver = {
+        let tel = cont.tels.get_tel(&vc_digest)?;
+        let kerl = cont.get_kerl()?.clone();
+        Entity::verify_vc(vc.as_bytes(), &vc_signature, tel, &kerl)?
+    };
+    assert!(ver);
+
+    cont.revoke_vc(vc)?;
+
+    let vc_state = cont.tels.get_state(&vc_digest)?;
+    assert!(matches!(vc_state, TelState::Revoked));
+
+    let tel = cont.tels.get_tel(&vc_digest)?;
+    let ver = Entity::verify_vc(vc.as_bytes(), &vc_signature, tel, &cont.get_kerl()?)?;
+    assert!(!ver);
+
+    Ok(())
 }

@@ -1,15 +1,21 @@
-use crate::error::Error;
 use crate::wallet_wrapper::WalletWrapper;
+use crate::{
+    error::Error,
+    tel::tel_event::TelState,
+    tel::TEL,
+};
 use base64::URL_SAFE;
 use jolocom_native_utils::did_document::DIDDocument;
 use keri::{
     database::lmdb::LmdbEventDatabase,
+    event::sections::{seal::EventSeal, KeyConfig},
+    event_message::parse,
     keri::Keri,
     prefix::{IdentifierPrefix, Prefix},
     signer::KeyManager,
-    state::IdentifierState,
+    state::{EventSemantics, IdentifierState},
 };
-use std::path::Path;
+use std::{convert::TryInto, path::Path};
 
 pub struct Entity {
     keri: Keri<LmdbEventDatabase, WalletWrapper>,
@@ -98,6 +104,7 @@ impl Entity {
             .map_err(|e| Error::KeriError(e))
     }
 
+    // Works only for currnet keys.
     pub fn verify(&self, ddoc: &DIDDocument, msg: &str, signature: &str) -> Result<bool, Error> {
         let signature_vec = base64::decode_config(signature, URL_SAFE)?;
 
@@ -108,6 +115,78 @@ impl Entity {
                 &signature_vec,
             )
             .map_err(|e| Error::KeriError(e))
+    }
+
+    /// Returns current Key Config associated with given event seal.
+    /// Note: Similar to function `get_keys_at_sn` in processor module in keriox,
+    /// but without processor.
+    // TODO should be in keriox, probably.
+    fn get_keys_at_sn(seal: &EventSeal, kel: &[u8]) -> Result<KeyConfig, Error> {
+        let sn = seal.sn;
+        let pref = seal.prefix.clone();
+        let s = parse::signed_event_stream(&kel).unwrap().1;
+
+        let state = s
+            .into_iter()
+            .take_while(|ev| match ev {
+                parse::Deserialized::Event(e) => {
+                    // println!("sn: {}", e.event.event.event.sn);
+                    e.event.event.event.prefix == pref && e.event.event.event.sn <= sn
+                }
+                parse::Deserialized::Vrc(_) => true,
+                parse::Deserialized::Rct(_) => true,
+            })
+            .fold(IdentifierState::default(), |st, e| {
+                let em = match e {
+                    parse::Deserialized::Event(e) => e.event.event.apply_to(st).unwrap(),
+                    parse::Deserialized::Vrc(_) => st,
+                    parse::Deserialized::Rct(_) => st,
+                };
+                em
+            });
+
+        // Check if seal digest and digest of last state event match.
+        if seal.event_digest.derivation.derive(&state.last) != seal.event_digest {
+            Err(Error::Generic(
+                "seal digest doesnt match last event's digest".into(),
+            ))
+        } else {
+            Ok(state.current)
+        }
+    }
+
+    pub fn verify_vc(vc: &[u8], signature: &[u8], tel: &TEL, kel: &[u8]) -> Result<bool, Error> {
+        match tel.get_state() {
+            TelState::NotIsuued => Ok(false),
+            TelState::Issued(event_seal) => {
+                // TODO kel argument should be reomoved. Keys can be taken from self.keri.
+                let keys = Entity::get_keys_at_sn(&event_seal, kel)?;
+
+                // This assumes that there is only one key.
+                let bp = keys.public_keys.get(0).unwrap();
+                let key_type = bp.derivation_code();
+                let public_key = bp.derivative();
+                let verification = match key_type.as_str() {
+                    "D" => {
+                        // With dalek.
+                        use ed25519_dalek::{PublicKey, Signature, Verifier};
+                        let pk = PublicKey::from_bytes(&public_key).unwrap();
+                        let array_signature: [u8; 64] = signature.clone().try_into().unwrap();
+                        let signature = Signature::new(array_signature);
+                        pk.verify(vc, &signature).is_ok()
+
+                        // With ursa.
+                        // let pub_key = PublicKey {0: public_key.to_vec()};
+                        // let ed = ursa::signatures::ed25519::Ed25519Sha512::new();
+                        // let msg = &serde_json::to_vec(&self).unwrap();
+                        // ed.verify(msg, &self.signature, &pub_key).map_err(|e| Error::Generic(e.to_string()))?
+                    }
+                    _ => false,
+                };
+                Ok(verification)
+            }
+            TelState::Revoked => Ok(false),
+        }
     }
 }
 
@@ -120,7 +199,7 @@ mod tests {
     fn test_signing() -> Result<(), Error> {
         let dir = tempdir().unwrap();
         let path = dir.path().to_str().unwrap();
-        let addresses_path = [path, "addresses"].join("");
+        let _addresses_path = [path, "addresses"].join("");
         let seeds = "[
             \"rwXoACJgOleVZ2PY7kXn7rA0II0mHYDhc6WrBH8fDAc=\",
             \"6zz7M08-HQSFq92sJ8KJOT2cZ47x7pXFQLPB0pckB3Q=\"]";
@@ -134,7 +213,7 @@ mod tests {
 
         let msg = "hello there!";
         let signature = ent.sign(msg)?;
-        let signature_b64 = base64::encode_config(signature, URL_SAFE);
+        let _signature_b64 = base64::encode_config(signature, URL_SAFE);
 
         // let v = ent.verify(&ent.get_prefix()?, msg, &signature_b64)?;
         // assert!(v);
@@ -142,17 +221,6 @@ mod tests {
         ent.update_keys()?;
         // let v = ent.verify(&ent.get_prefix()?, msg, &signature_b64)?;
         // assert!(!v);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_incepting() -> Result<(), Error> {
-        let dir = tempdir().unwrap();
-        let path = dir.path().to_str().unwrap();
-        let addresses_path = [path, "addresses"].join("");
-
-        let _ent = Entity::new(path)?;
 
         Ok(())
     }
