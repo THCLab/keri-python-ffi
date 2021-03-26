@@ -7,7 +7,7 @@ foreign_class!(
         self_type SharedController;
         private constructor = empty;
         fn SharedController::new(db_path: &str, address: &str, address_store_path: &str) -> Result<SharedController, Error>;
-        // fn SharedEntity::new_from_seeds(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Result<SharedEntity, Error>;
+        // fn SharedController::new_from_seeds(db_path: &str, address: &str, seeds: &str, address_store_path: &str) -> Result<SharedEntity, Error>;
         fn SharedController::get_did_doc(&self, id: &str) -> Result<String, Error>;
         fn SharedController::update_keys(&mut self) -> Result<(), Error> ;
         // fn SharedController::append(&mut self, msg: &str) -> Result<(), Error>;

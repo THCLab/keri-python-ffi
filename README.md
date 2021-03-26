@@ -11,7 +11,7 @@ Output `.so` file is copied to `ffi/python/libs` folder.
 ### Examples
 To run example go to `ffi/python` and run:
 
-    python3 entity_example.py
+    python3 controller_example.py
 
 #### Preview
 ![entity example](../assets/entity_example.gif?raw=true)
