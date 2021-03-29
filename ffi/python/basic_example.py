@@ -7,7 +7,6 @@ seeds = "[\"cwFTk-wgk3ZT2buPRIbK-zxgPx-TKbaegQvPEivN90Y=\", \"lntkt3u6dDgiQxTATr
 temp_provider = tempfile.TemporaryDirectory()
 provider_path =  "./adr_db"
 
-print("\n" +provider_path+"\n")
 # bob = Controller.new_from_seeds(bob_temp_dir.name, 'localhost:3456', seeds, temp_provider)
 bob = Controller.new(bob_temp_dir.name, 'localhost:3456', provider_path)
 bob.run()
@@ -28,4 +27,13 @@ print("Diddoc after rotation: ")
 ddoc = bob.get_did_doc(bob.get_prefix())
 print(ddoc)
 
+eve_temp_dir = tempfile.TemporaryDirectory()
+eve = Controller.new(eve_temp_dir.name, 'localhost:1234', provider_path)
+eve.run()
+
+print("Eve's diddoc: ")
+ddoc = bob.get_did_doc(eve.get_prefix())
+print(ddoc)
+
 bob_temp_dir.cleanup()
+eve_temp_dir.cleanup()

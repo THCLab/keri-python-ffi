@@ -1,36 +1,41 @@
-use std::collections::HashMap;
-
-use rustbreak::{deser::Ron, FileDatabase};
+use std::{
+    fs::OpenOptions,
+    io::{self, BufRead, Write},
+};
 
 use crate::error::Error;
 
 pub struct AddressProvider {
-    storage: FileDatabase<HashMap<String, String>, Ron>,
+    db_path: String,
 }
 
 impl AddressProvider {
     pub fn new(db_path: &str) -> Result<AddressProvider, Error> {
-        let db: FileDatabase<HashMap<String, String>, Ron> =
-            FileDatabase::load_from_path_or(db_path, HashMap::new())
-                .map_err(|e| Error::AddressProviderError(e))?;
-        Ok(Self { storage: db })
+        Ok(Self {
+            db_path: db_path.to_string(),
+        })
     }
     pub fn register(&self, id: &str, address: &str) -> Result<(), Error> {
-        self.storage.write(|db| {
-            db.insert(id.to_string(), address.to_string());
-        })?;
-
-        self.storage.save()?;
+        let mut file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .append(true)
+            .open(&self.db_path)?;
+        file.write_all([id, address, "\n"].join(" ").as_bytes())?;
 
         Ok(())
     }
 
     pub fn get_address(&self, id: &str) -> Result<Option<String>, Error> {
-        let mut s = None;
-        self.storage.read(|db| {
-            s = db.get(id).map(|s| s.to_owned());
-        })?;
+        let file = OpenOptions::new().read(true).open(&self.db_path)?;
+        let mut lines = io::BufReader::new(file).lines();
 
-        Ok(s)
+        Ok(lines
+            .find(|line| line.as_ref().unwrap().starts_with(id))
+            .map(|element| match element {
+                Ok(el) => el.split(" ").collect::<Vec<_>>()[1].to_owned(),
+                Err(_) => "".into(),
+            }))
     }
 }
