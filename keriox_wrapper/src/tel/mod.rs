@@ -1,11 +1,11 @@
-// use ursa::{keys::PublicKey, signatures::SignatureScheme};
 pub mod tel_event;
 pub mod tel_manager;
 
 use self::tel_event::{TelEvent, TelState};
 use crate::error::Error;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TEL {
     events: Vec<TelEvent>,
     state: TelState,

@@ -1,7 +1,7 @@
-use jolocom_native_utils::wallet::wallet::ExportedWallet;
+use jolocom_native_utils::wallet::wallet::Wallet;
 use jolocom_native_utils::{
     did_document::{VerificationMethod, VerificationMethodProperties},
-    wallet::wallet::Wallet,
+    wallet::wallet::ExportedWallet,
 };
 use keri::{error::Error, signer::KeyManager};
 pub struct WalletWrapper {
@@ -69,16 +69,14 @@ impl WalletWrapper {
             VerificationMethodProperties::Pem(k) => k,
         };
 
-        Ok(Wallet::verify_with_key(
-            key_b64_str,
-            &vm.key_type.to_string(),
-            data,
-            signature,
-        )?)
+        Ok(
+            Wallet::verify_with_key(key_b64_str, &vm.key_type.to_string(), data, signature)
+                .map_err(|e| Error::SemanticError(e.to_string()))?,
+        )
     }
 
     pub fn new_encrypted_wallet(pass: &str) -> Result<ExportedWallet, Error> {
-        ExportedWallet::incepted_enc_wallet(pass)
+        ExportedWallet::incepted_enc_wallet(pass).map_err(|e| Error::SemanticError(e.to_string()))
     }
 
     pub fn to_wallet(enc_wallet: ExportedWallet, pass: &str) -> Result<WalletWrapper, Error> {

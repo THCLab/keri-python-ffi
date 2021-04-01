@@ -1,10 +1,8 @@
 use crate::error::Error;
-use keri::{
-    event::sections::{seal::EventSeal},
-};
+use keri::event::sections::seal::EventSeal;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TelState {
     NotIsuued,
     Issued(EventSeal),
@@ -22,7 +20,7 @@ pub struct TelEvent {
     event_seal: EventSeal,
     operation: Operation,
 
-    #[serde(skip_serializing)]
+    // #[serde(skip_serializing)]
     signature: Vec<u8>,
 }
 

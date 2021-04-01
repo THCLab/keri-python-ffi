@@ -2,9 +2,10 @@ use std::{
     collections::HashMap,
     str::from_utf8,
     sync::{Arc, Mutex},
-    thread,
+    thread::{self},
 };
 
+use crate::tel::TEL;
 use jolocom_native_utils::did_document::{state_to_did_document, DIDDocument};
 use keri::{
     derivation::self_addressing::SelfAddressing,
@@ -36,6 +37,12 @@ impl SharedController {
                 address,
                 address_store_path,
             ))),
+        })
+    }
+
+    pub fn from_controller(controller: Controller) -> Result<Self, Error> {
+        Ok(Self {
+            controller: Arc::new(Mutex::new(controller)),
         })
     }
 
@@ -113,6 +120,21 @@ impl SharedController {
             false,
         ))
     }
+
+    pub fn verify_vc(&self, issuer_id: &str, vc: &str, signature: &[u8]) -> Result<bool, Error> {
+        let e = self.controller.lock().unwrap();
+        e.verify_vc(issuer_id, vc.to_string(), signature)
+    }
+
+    pub fn issue_vc(&self, vc: &str) -> Result<Vec<u8>, Error> {
+        let mut e = self.controller.lock().unwrap();
+        e.issue_vc(vc)
+    }
+
+    pub fn revoke_vc(&self, vc: &str) -> Result<(), Error> {
+        let mut e = self.controller.lock().unwrap();
+        e.revoke_vc(vc)
+    }
 }
 
 pub struct Controller {
@@ -189,10 +211,10 @@ impl Controller {
     }
 
     pub fn get_did_doc(&self, id: &str, ent: &Entity) -> Result<DIDDocument, Error> {
-        let pref = id.parse().map_err(|e| Error::KeriError(e))?;
+        let pref: IdentifierPrefix = id.parse().map_err(|e| Error::KeriError(e))?;
         let state = self
             .get_state(&pref, ent)?
-            .ok_or(Error::Generic("There is no state.".into()))?;
+            .ok_or(Error::Generic(format!("There is no state for {}.", id)))?;
         Ok(state_to_did_document(state, "keri"))
     }
 
@@ -203,7 +225,7 @@ impl Controller {
 
         // Create event seal.
         let event_seal = {
-            let prefix = self.main_entity.get_prefix()?.parse()?;
+            let prefix: IdentifierPrefix = self.main_entity.get_prefix()?.parse()?;
             let state = self.get_state(&prefix, &self.main_entity)?.unwrap();
             let sn = state.sn;
             let last = state.last;
@@ -225,15 +247,39 @@ impl Controller {
 
         // Update tels
         self.tels.process_tel_event(&vc_digest, isev)?;
+
         Ok(())
     }
 
-    pub fn issue_vc(&mut self, vc: &str) -> Result<(), Error> {
-        self.make_tel_event(vc, Operation::Issue)
+    pub fn issue_vc(&mut self, vc: &str) -> Result<Vec<u8>, Error> {
+        self.make_tel_event(vc, Operation::Issue)?;
+        self.sign(vc)
     }
 
     pub fn revoke_vc(&mut self, vc: &str) -> Result<(), Error> {
         self.make_tel_event(vc, Operation::Revoke)
+    }
+
+    pub fn verify_vc(&self, issuer: &str, vc: String, signature: &[u8]) -> Result<bool, Error> {
+        // Ask issuer for tel
+        let address = self.comm.get_address_for_prefix(issuer)?.unwrap();
+        let tel: TEL = {
+            let tel_vec = TCPCommunication::ask_for_tel(vc.as_bytes(), &address)?;
+            println!("Got tel: \n{}", from_utf8(&tel_vec).unwrap());
+            serde_json::from_str(from_utf8(&tel_vec).unwrap().trim()).unwrap()
+        };
+
+        match self.main_entity.verify_vc(vc.as_bytes(), signature, &tel) {
+            Ok(ver) => Ok(ver),
+            Err(_) => {
+                // There is no kel of issuer in db
+                // Ask about it and try again
+                {
+                    self.get_state(&issuer.parse::<IdentifierPrefix>()?, &self.main_entity)?;
+                }
+                self.main_entity.verify_vc(vc.as_bytes(), signature, &tel)
+            }
+        }
     }
 
     pub fn run(controller: Arc<Mutex<Controller>>) -> Result<(), Error> {
@@ -241,7 +287,7 @@ impl Controller {
             let cont = controller.lock().unwrap();
             cont.comm.get_address()
         };
-        thread::spawn(move || {
+        thread::spawn(|| {
             TCPCommunication::run(address, controller).unwrap();
         });
         Ok(())
@@ -249,18 +295,34 @@ impl Controller {
 
     pub fn parse_message(&self, message: &[u8]) -> Result<Vec<u8>, Error> {
         let msg_str = from_utf8(message).map_err(|e| Error::Generic(e.to_string()))?;
-        let split: Vec<_> = msg_str.split_whitespace().collect();
+        let mut splitter = msg_str.splitn(2, ' ');
+        let command = splitter
+            .next()
+            .ok_or(Error::Generic("Improper message format".into()))?;
+        let arg = splitter
+            .next()
+            .ok_or(Error::Generic("Improper message format".into()))?;
 
-        println!(
-            "{}",
-            TCPCommunication::format_event_stream(split[1].as_bytes(), true)
-        );
-        let ent = if split[0] == self.main_entity.get_prefix().unwrap() {
-            &self.main_entity
-        } else {
-            self.entities.get(split[0]).unwrap()
-        };
-        ent.respond(split[1].as_bytes())
+        match command {
+            "tel" => {
+                let vc_dig = blake3::hash(arg.as_bytes()).as_bytes().to_vec();
+                // let vc_dig_b64 = base64::encode(vc_dig).as_bytes().to_vec();
+                let tel = self.tels.get_tel(&vc_dig)?;
+                serde_json::to_vec(tel).map_err(|e| Error::Generic(e.to_string()))
+            }
+            _ => {
+                println!(
+                    "{}",
+                    TCPCommunication::format_event_stream(arg.as_bytes(), true)
+                );
+                let ent = if command == self.main_entity.get_prefix().unwrap() {
+                    &self.main_entity
+                } else {
+                    self.entities.get(command).unwrap()
+                };
+                ent.respond(arg.as_bytes())
+            }
+        }
     }
 
     pub fn get_state(
@@ -280,16 +342,26 @@ impl Controller {
                             id.to_str()
                         )))?;
                 TCPCommunication::send(&kerl, &addr, &id.to_str(), entity)?;
+
                 Ok(entity.get_state_for_prefix(id)?)
             }
         }
     }
-}
 
+    // pub fn get_kerl_for_pref(&self, prefix: &str) -> Result<Vec<u8>, Error> {
+    //     self.main_entity.get_state_for_prefix(id)
+    //      let kerl = self
+    //         .keri
+    //         .get_kerl()
+    //         .map_err(|e| Error::KeriError(e))?
+    //         .unwrap_or(vec![])
+    //     Ok(())
+    // }
+}
 #[test]
 fn test_vc() -> Result<(), Error> {
-    use tempfile::tempdir;
     use crate::tel::tel_event::TelState;
+    use tempfile::tempdir;
     let db_dir = tempdir()?;
     let db_path = db_dir.path().to_str().unwrap();
     let adr_store_path = [db_dir.path().to_str().unwrap(), "adr"].join("");
@@ -308,8 +380,8 @@ fn test_vc() -> Result<(), Error> {
 
     let ver = {
         let tel = cont.tels.get_tel(&vc_digest)?;
-        let kerl = cont.get_kerl()?.clone();
-        Entity::verify_vc(vc.as_bytes(), &vc_signature, tel, &kerl)?
+        cont.main_entity
+            .verify_vc(vc.as_bytes(), &vc_signature, tel)?
     };
     assert!(ver);
 
@@ -317,8 +389,8 @@ fn test_vc() -> Result<(), Error> {
     cont.update_keys()?;
     let ver = {
         let tel = cont.tels.get_tel(&vc_digest)?;
-        let kerl = cont.get_kerl()?.clone();
-        Entity::verify_vc(vc.as_bytes(), &vc_signature, tel, &kerl)?
+        cont.main_entity
+            .verify_vc(vc.as_bytes(), &vc_signature, tel)?
     };
     assert!(ver);
 
@@ -328,8 +400,63 @@ fn test_vc() -> Result<(), Error> {
     assert!(matches!(vc_state, TelState::Revoked));
 
     let tel = cont.tels.get_tel(&vc_digest)?;
-    let ver = Entity::verify_vc(vc.as_bytes(), &vc_signature, tel, &cont.get_kerl()?)?;
+    let ver = cont
+        .main_entity
+        .verify_vc(vc.as_bytes(), &vc_signature, tel)?;
     assert!(!ver);
 
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test_communication() -> Result<(), Error> {
+        use tempfile::tempdir;
+        let db_dir = tempdir()?;
+        let db_path = db_dir.path().to_str().unwrap();
+        let adr_store_path = [db_dir.path().to_str().unwrap(), "adr"].join("");
+
+        let mut cont = Controller::new(db_path, "localhost:1212", &adr_store_path);
+        let prefix = cont.main_entity.get_prefix()?;
+        // Compute vc related stuff
+        let vc = "Some vc";
+        let _vc_digest = blake3::hash(vc.as_bytes()).as_bytes().to_vec();
+        let vc_signature = cont.sign(vc)?;
+
+        cont.issue_vc(vc)?;
+        // cont.update_keys()?;
+
+        let db_dir = tempdir()?;
+        let db_path = db_dir.path().to_str().unwrap();
+        let shared = SharedController::from_controller(cont)?;
+        let s2 = shared.clone();
+        shared.run()?;
+
+        let asking_cont = Controller::new(db_path, "localhost:3232", &adr_store_path);
+        let shared_asker = SharedController::from_controller(asking_cont)?;
+        let asker = shared_asker.clone();
+        shared_asker.run()?;
+
+        // let ddoc = asker.get_did_doc(&s2.get_prefix().await?).await?;
+        // println!("cont didoc: \n{}", ddoc);
+
+        // let tel_vec = TCPCommunication::ask_for_tel(vc.as_bytes(), "localhost:1212")?;
+        // let tel: &TEL = &serde_json::from_str(from_utf8(&tel_vec).unwrap().trim()).unwrap();
+
+        // println!("tel: {:?}", tel);
+
+        let ver = asker.verify_vc(&prefix, vc, &vc_signature)?;
+
+        assert!(ver);
+
+        s2.revoke_vc(vc)?;
+        let ver = asker.verify_vc(&prefix, vc, &vc_signature)?;
+        assert!(!ver);
+
+        Ok(())
+    }
 }

@@ -35,12 +35,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         &ap_path,
     )
     .unwrap();
-    let bob = bob_controller.clone();
+    let mut bob = bob_controller.clone();
+    bob.append("something to append")?;
     bob.run()?;
     let bob = bob_controller.clone();
 
-    let ddoc = bob.get_did_doc(&eve.get_prefix()?)?;
-    println!("eve's ddoc: {}", ddoc);
+    // let ddoc = bob.get_did_doc(&eve.get_prefix()?)?;
+    // println!("eve's ddoc: {}", ddoc);
 
     let ddoc = eve.get_did_doc(&bob.get_prefix()?)?;
     println!("bob's ddoc: {}", ddoc);

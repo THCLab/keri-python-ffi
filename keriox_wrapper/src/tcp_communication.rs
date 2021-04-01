@@ -3,7 +3,7 @@ use crate::{
 };
 use keri::{event_message::parse, prefix::Prefix};
 use std::{
-    io::{self, Read, Write},
+    io::{Read, Write},
     net::{TcpListener, TcpStream},
     sync::{Arc, Mutex},
     time::Duration,
@@ -34,92 +34,63 @@ impl TCPCommunication {
     pub fn send(message: &[u8], address: &str, to_who: &str, entity: &Entity) -> Result<(), Error> {
         let mut msg = [to_who, " "].join("").as_bytes().to_vec();
         msg.extend(message);
-        let mut stream =
-            TcpStream::connect(address.clone()).map_err(|e| Error::CommunicationError(e))?;
-        stream
-            .set_read_timeout(Some(Duration::from_millis(500)))
-            .map_err(|e| Error::CommunicationError(e))?;
-        stream
-            .write(&msg)
-            .map_err(|e| Error::CommunicationError(e))?;
-        // println!("Sent:\n{}\n", from_utf8(message).unwrap());
+        let mut stream = TcpStream::connect(address.clone())?;
+        stream.set_read_timeout(Some(Duration::from_millis(500)))?;
+        stream.write(&msg)?;
         let mut buf = [0; 2048];
-        let n = stream
-            .read(&mut buf)
-            .map_err(|e| Error::CommunicationError(e))?;
+
+        let n = stream.read(&mut buf)?;
 
         println!("{}", TCPCommunication::format_event_stream(&buf[..n], true));
-
         let res = entity.respond(&buf[..n])?;
 
         if res.len() != 0 {
             let mut msg = [to_who, " "].join("").as_bytes().to_vec();
             msg.extend(res);
 
-            stream
-                .write(&msg)
-                .map_err(|e| Error::CommunicationError(e))?;
-
-            match stream.read(&mut buf) {
-                Err(e) => match e.kind() {
-                    io::ErrorKind::WouldBlock => {
-                        // println!("would have blocked");
-                    }
-                    _ => panic!("Got an error: {}", e),
-                },
-                Ok(_) => {
-                    // println!("Got:\n{}\n", from_utf8(&buf[..m]).unwrap());
-                }
-            };
+            stream.write(&msg)?;
         }
         Ok(())
     }
 
+    pub fn ask_for_tel(vc: &[u8], address: &str) -> Result<Vec<u8>, Error> {
+        let mut msg = "tel ".as_bytes().to_vec();
+        msg.extend(vc);
+        let mut stream = TcpStream::connect(address.clone())?;
+        stream.write_all(&msg)?;
+        // println!("Sent:\n{}\n", from_utf8(&msg).unwrap());
+        let mut buf = [0; 2048];
+        let n = stream.read(&mut buf)?;
+        let m = buf[..n].to_vec().clone();
+
+        Ok(m)
+    }
+
     pub fn run(address: String, controller: Arc<Mutex<Controller>>) -> Result<(), Error> {
-        let listener = TcpListener::bind(&address).map_err(|e| Error::CommunicationError(e))?;
+        let listener = TcpListener::bind(&address)?;
         println!("Listening on: {}", address);
 
         loop {
-            let (mut socket, _) = listener
-                .accept()
-                .map_err(|e| Error::CommunicationError(e))?;
-            socket
-                .set_read_timeout(Some(Duration::from_millis(200)))
-                .map_err(|e| Error::CommunicationError(e))?;
-            socket
-                .set_write_timeout(Some(Duration::from_millis(200)))
-                .map_err(|e| Error::CommunicationError(e))?;
-            let mut buf = [0; 2048];
+            let (mut socket, _adr) = listener.accept()?;
+            socket.set_read_timeout(Some(Duration::from_millis(200)))?;
+            socket.set_write_timeout(Some(Duration::from_millis(200)))?;
 
+            let c = Arc::clone(&controller);
+
+            let mut buf = vec![0; 2048];
             loop {
-                let n = match socket.read(&mut buf) {
-                    Err(e) => match e.kind() {
-                        io::ErrorKind::WouldBlock => {
-                            // println!("would have blocked");
-                            break;
-                        }
-                        _ => return Err(Error::CommunicationError(e)),
-                    },
-                    Ok(m) => m,
-                };
+                let n = socket.read(&mut buf)?;
+
+                if n == 0 {
+                    break;
+                }
 
                 let msg = &buf[..n];
-
-                {
-                    let k = controller.lock().unwrap();
-
+                if msg.len() > 0 {
+                    let k = c.lock().unwrap();
                     let receipt = k.parse_message(msg).expect("failed while event processing");
 
-                    match socket.write_all(&receipt) {
-                        Err(e) => match e.kind() {
-                            io::ErrorKind::WouldBlock => {
-                                // println!("would have blocked");
-                                break;
-                            }
-                            _ => return Err(Error::CommunicationError(e)),
-                        },
-                        Ok(_) => {}
-                    };
+                    socket.write_all(&receipt)?;
                 }
             }
         }

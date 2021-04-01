@@ -1,9 +1,5 @@
 use crate::wallet_wrapper::WalletWrapper;
-use crate::{
-    error::Error,
-    tel::tel_event::TelState,
-    tel::TEL,
-};
+use crate::{error::Error, tel::tel_event::TelState, tel::TEL};
 use base64::URL_SAFE;
 use jolocom_native_utils::did_document::DIDDocument;
 use keri::{
@@ -130,7 +126,6 @@ impl Entity {
             .into_iter()
             .take_while(|ev| match ev {
                 parse::Deserialized::Event(e) => {
-                    // println!("sn: {}", e.event.event.event.sn);
                     e.event.event.event.prefix == pref && e.event.event.event.sn <= sn
                 }
                 parse::Deserialized::Vrc(_) => true,
@@ -155,12 +150,15 @@ impl Entity {
         }
     }
 
-    pub fn verify_vc(vc: &[u8], signature: &[u8], tel: &TEL, kel: &[u8]) -> Result<bool, Error> {
+    pub fn verify_vc(&self, vc: &[u8], signature: &[u8], tel: &TEL) -> Result<bool, Error> {
         match tel.get_state() {
             TelState::NotIsuued => Ok(false),
             TelState::Issued(event_seal) => {
-                // TODO kel argument should be reomoved. Keys can be taken from self.keri.
-                let keys = Entity::get_keys_at_sn(&event_seal, kel)?;
+                let state = self.keri.get_state_for_seal(&event_seal);
+                let keys = match state? {
+                    Some(state) => state.current,
+                    None => return Err(Error::Generic("There is no keys".into())),
+                };
 
                 // This assumes that there is only one key.
                 let bp = keys.public_keys.get(0).unwrap();
