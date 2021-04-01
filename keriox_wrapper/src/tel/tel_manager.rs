@@ -80,17 +80,17 @@ mod tests {
 
         // Try to revoke not issued vc.
         let not_issued_vc = "not issued vc";
-        let vc_digest = blake3::hash(not_issued_vc.as_bytes()).as_bytes().to_vec();
+        let not_issued_vc_digest = blake3::hash(not_issued_vc.as_bytes()).as_bytes().to_vec();
 
         let rev_seal = r#"{"i":"DIhUJMEYCsLSWhZ1TtvXI2Z9WZmWOBrtozLrLJwmNexI","s":"3","d":"EWhbaXRxADbR0yOmLqRRW2XzEKR0tyE8EbjqlGOaJg-o"}"#;
         let revoking_event_seal: EventSeal = serde_json::from_str(rev_seal).unwrap();
 
         let rev_event = TelEvent::new(revoking_event_seal, Operation::Revoke);
         assert!(tel_manager
-            .process_tel_event(&vc_digest, rev_event)
+            .process_tel_event(&not_issued_vc_digest, rev_event)
             .is_err());
 
-        let vc_state = tel_manager.get_state(&vc_digest)?;
+        let vc_state = tel_manager.get_state(&not_issued_vc_digest)?;
         assert!(matches!(vc_state, TelState::NotIsuued));
 
         Ok(())

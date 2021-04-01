@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::tel::TEL;
+use base64::URL_SAFE;
 use jolocom_native_utils::did_document::{state_to_did_document, DIDDocument};
 use keri::{
     derivation::self_addressing::SelfAddressing,
@@ -119,6 +120,19 @@ impl SharedController {
             &e.main_entity.get_kerl()?,
             false,
         ))
+    }
+
+    pub fn get_formatted_kerl(&self) -> Result<String, Error> {
+        let e = self.controller.lock().unwrap();
+        let kerl = &e.main_entity.get_kerl()?;
+        Ok(TCPCommunication::format_event_stream(kerl, false))
+    }
+    
+    pub fn get_formatted_tel(&self, vc_dig: &str) -> Result<String, Error> {
+        let e = self.controller.lock().unwrap();
+        let vc_dig_vec = base64::decode_config(vc_dig, URL_SAFE)?;
+        let tel = e.tels.get_tel(&vc_dig_vec)?;
+        Ok(tel.to_string())
     }
 
     pub fn verify_vc(&self, issuer_id: &str, vc: &str, signature: &[u8]) -> Result<bool, Error> {
@@ -261,25 +275,20 @@ impl Controller {
     }
 
     pub fn verify_vc(&self, issuer: &str, vc: String, signature: &[u8]) -> Result<bool, Error> {
+        // Make sure that issuer kel is in db
+        {
+            self.get_state(&issuer.parse::<IdentifierPrefix>()?, &self.main_entity)?;
+        }
         // Ask issuer for tel
         let address = self.comm.get_address_for_prefix(issuer)?.unwrap();
         let tel: TEL = {
             let tel_vec = TCPCommunication::ask_for_tel(vc.as_bytes(), &address)?;
-            println!("Got tel: \n{}", from_utf8(&tel_vec).unwrap());
             serde_json::from_str(from_utf8(&tel_vec).unwrap().trim()).unwrap()
         };
-
-        match self.main_entity.verify_vc(vc.as_bytes(), signature, &tel) {
-            Ok(ver) => Ok(ver),
-            Err(_) => {
-                // There is no kel of issuer in db
-                // Ask about it and try again
-                {
-                    self.get_state(&issuer.parse::<IdentifierPrefix>()?, &self.main_entity)?;
-                }
-                self.main_entity.verify_vc(vc.as_bytes(), signature, &tel)
-            }
-        }
+        let vc_dig = base64::encode_config(&blake3::hash(vc.as_bytes()).as_bytes().to_vec(), URL_SAFE);
+        println!("TEL for VC of digest {}:\n{}\n", vc_dig, tel.to_string());
+        
+        self.main_entity.verify_vc(vc.as_bytes(), signature, &tel)
     }
 
     pub fn run(controller: Arc<Mutex<Controller>>) -> Result<(), Error> {

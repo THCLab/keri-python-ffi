@@ -1,6 +1,7 @@
 use crate::{
     address_provider::AddressProvider, controller::Controller, entity::Entity, error::Error,
 };
+use base64::URL_SAFE;
 use keri::{event_message::parse, prefix::Prefix};
 use std::{
     io::{Read, Write},
@@ -67,7 +68,7 @@ impl TCPCommunication {
 
     pub fn run(address: String, controller: Arc<Mutex<Controller>>) -> Result<(), Error> {
         let listener = TcpListener::bind(&address)?;
-        println!("Listening on: {}", address);
+        // println!("Listening on: {}", address);
 
         loop {
             let (mut socket, _adr) = listener.accept()?;
@@ -132,7 +133,15 @@ impl TCPCommunication {
                                 .join(", "),
                         ]
                         .join(" "),
-                        keri::event::event_data::EventData::Ixn(_) => "interaction".to_string(),
+                        keri::event::event_data::EventData::Ixn(ixn) => {
+                            let digest = match ixn.data[0] {
+                                keri::event::sections::seal::Seal::Event(ref es) => {base64::encode_config(&es.event_digest.digest, URL_SAFE)}
+                                keri::event::sections::seal::Seal::Location(_) => {"".into()}
+                                keri::event::sections::seal::Seal::Digest(ref d) => {base64::encode_config(&d.dig.digest, URL_SAFE)}
+                                keri::event::sections::seal::Seal::Root(_) => {"".into()}
+                            };
+                            ["interaction,".to_string(), "digest:".to_string(), digest].join(" ")
+                        },
                         _ => "".to_string(),
                     };
                     out.push_str(&format!("\tsn: {}, type: {}\n", e.event.event.event.sn, t));
@@ -163,7 +172,6 @@ impl TCPCommunication {
 
         Ok(msg)
     }
-
 
     pub fn get_address(&self) -> String {
         self.address.clone()

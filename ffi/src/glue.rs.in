@@ -23,6 +23,8 @@ foreign_class!(
         fn SharedController::run(self) -> Result<(), Error>;
         fn SharedController::get_prefix(&self) -> Result<String, Error>;
         fn SharedController::get_kerl(&self) -> Result<String, Error>;
+        fn SharedController::get_formatted_kerl(&self) -> Result<String, Error>;
+        fn SharedController::get_formatted_tel(&self, vc_dig: &str) -> Result<String, Error>;
 
         fn SharedController::verify_vc(&self, issuer_id: &str, vc: &str, signature: &[u8]) -> Result<bool, Error>;
         fn SharedController::issue_vc(&self, vc: &str) -> Result<Vec<u8>, Error>;

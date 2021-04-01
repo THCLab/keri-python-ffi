@@ -1,6 +1,8 @@
 pub mod tel_event;
 pub mod tel_manager;
 
+use std::fmt;
+
 use self::tel_event::{TelEvent, TelState};
 use crate::error::Error;
 use serde::{Deserialize, Serialize};
@@ -9,6 +11,14 @@ use serde::{Deserialize, Serialize};
 pub struct TEL {
     events: Vec<TelEvent>,
     state: TelState,
+}
+
+
+impl fmt::Display for TEL {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let list: Vec<_> = self.events.iter().map(|ev| ev.to_string()).collect();
+        write!(f, "{}", list.join("\n"))
+    }
 }
 
 impl TEL {
@@ -32,4 +42,14 @@ impl TEL {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use crate::error::Error;
+
+
+    #[test]
+    fn test() -> Result<(), Error> {
+        
+        Ok(())
+    }
+
+}
