@@ -30,11 +30,11 @@ pub struct TelEvent {
 
 impl fmt::Display for TelEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let issuer = ["issuer: ", &self.event_seal.prefix.to_str()].join("");
+        let _issuer = ["issuer: ", &self.event_seal.prefix.to_str()].join("");
         let operation = ["operation: ", &serde_json::to_string(&self.operation).unwrap()].join("");
-        let signature = ["signature: ", &base64::encode_config(&self.signature, URL_SAFE)].join("");
+        let _signature = ["signature: ", &base64::encode_config(&self.signature, URL_SAFE)].join("");
         let sn = ["sn: ", &self.event_seal.sn.to_string()].join("");
-        let digest = ["issuence event digest: ", &self.event_seal.event_digest.to_str()].join("");
+        let _digest = ["issuence event digest: ", &self.event_seal.event_digest.to_str()].join("");
 
     write!(f, "\t{}", [sn, operation].join(", "))
     }

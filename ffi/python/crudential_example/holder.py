@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 sys.path.append("..")
-from libs.libkel_utils import Controller 
+from libs.libkel_utils import Controller, SignatureState 
 import tempfile
 import base64
 import json
@@ -28,12 +28,14 @@ verification = verifier.verify_vc(issuer, msg, signature)
 
 # print("\nIssuer's DIDDoc: \n" + json.dumps(json.loads(verifier.get_did_doc(issuer)), indent=4, sort_keys=True) + "\n")
 
-if verification:
-    print("Signature is verified\n")
-else :
+
+if verification == SignatureState.Ok:
+    print("VC is signed by " + issuer + "\n")
+elif verification == SignatureState.Revoked:
     vc_hash = blake3.blake3(bytes(msg, encoding='utf8')).digest()
     vc_b64_hash = str(base64.urlsafe_b64encode(vc_hash).decode())
-
     print("VC of digest " + vc_b64_hash + " has been revoked\n")
+elif verification == SignatureState.Wrong:
+    print("Signature is wrong. VC is not signed by " + issuer + "\n")
 
 verifier_temp_dir.cleanup()

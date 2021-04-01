@@ -44,13 +44,15 @@ while(True):
   if val == "rot":
     # rotate keys
     issuer.update_keys()
-    print("Keys updated\n")
+    print("Keys rotated. Current KEL:")
+    print(issuer.get_formatted_kerl())
   elif val == "rev":
     # revoke last vc
     issuer.revoke_vc(message)
-    print("VC revoked\n")
+    print("VC of digest: "+ b64_vc_hash + " was revoked. Current TEL:")
+    print(issuer.get_formatted_tel(b64_vc_hash) + "\n")
   elif val == "kel":
     print(issuer.get_formatted_kerl())
   elif val == "tel":
-    print("TEL of vc of digest "+ b64_vc_hash)
+    print("vc digest: "+ b64_vc_hash)
     print(issuer.get_formatted_tel(b64_vc_hash) + "\n")

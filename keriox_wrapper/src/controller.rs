@@ -25,6 +25,12 @@ use crate::{
     },
 };
 
+pub enum SignatureState {
+    Ok,
+    Wrong,
+    Revoked,
+}
+
 #[derive(Clone)]
 pub struct SharedController {
     controller: Arc<Mutex<Controller>>,
@@ -135,7 +141,7 @@ impl SharedController {
         Ok(tel.to_string())
     }
 
-    pub fn verify_vc(&self, issuer_id: &str, vc: &str, signature: &[u8]) -> Result<bool, Error> {
+    pub fn verify_vc(&self, issuer_id: &str, vc: &str, signature: &[u8]) -> Result<SignatureState, Error> {
         let e = self.controller.lock().unwrap();
         e.verify_vc(issuer_id, vc.to_string(), signature)
     }
@@ -274,7 +280,7 @@ impl Controller {
         self.make_tel_event(vc, Operation::Revoke)
     }
 
-    pub fn verify_vc(&self, issuer: &str, vc: String, signature: &[u8]) -> Result<bool, Error> {
+    pub fn verify_vc(&self, issuer: &str, vc: String, signature: &[u8]) -> Result<SignatureState, Error> {
         // Make sure that issuer kel is in db
         {
             self.get_state(&issuer.parse::<IdentifierPrefix>()?, &self.main_entity)?;
@@ -287,7 +293,7 @@ impl Controller {
         };
         let vc_dig = base64::encode_config(&blake3::hash(vc.as_bytes()).as_bytes().to_vec(), URL_SAFE);
         println!("TEL for VC of digest {}:\n{}\n", vc_dig, tel.to_string());
-        
+
         self.main_entity.verify_vc(vc.as_bytes(), signature, &tel)
     }
 
@@ -397,7 +403,7 @@ mod tests {
             cont.main_entity
                 .verify_vc(vc.as_bytes(), &vc_signature, tel)?
         };
-        assert!(ver);
+        assert!(matches!(ver, SignatureState::Ok));
 
         // Rotate keys and verify vc again.
         cont.update_keys()?;
@@ -406,7 +412,7 @@ mod tests {
             cont.main_entity
                 .verify_vc(vc.as_bytes(), &vc_signature, tel)?
         };
-        assert!(ver);
+        assert!(matches!(ver, SignatureState::Ok));
 
         cont.revoke_vc(vc)?;
 
@@ -417,7 +423,7 @@ mod tests {
         let ver = cont
             .main_entity
             .verify_vc(vc.as_bytes(), &vc_signature, tel)?;
-        assert!(!ver);
+        assert!(matches!(ver, SignatureState::Revoked));
 
         Ok(())
     }
@@ -459,11 +465,11 @@ mod tests {
             .get_state_for_prefix(&prefix.parse()?)?;
         assert_eq!(issuer_state.unwrap().sn, issuer_state_in_asker.unwrap().sn);
 
-        assert!(ver);
+        assert!(matches!(ver, SignatureState::Ok));
 
         issuer.revoke_vc(vc)?;
         let ver = shared_asker.verify_vc(&prefix, vc, &vc_signature)?;
-        assert!(!ver);
+        assert!(matches!(ver, SignatureState::Revoked));
 
         Ok(())
     }

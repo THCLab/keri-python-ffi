@@ -1,15 +1,14 @@
+use crate::controller::SignatureState;
 use crate::wallet_wrapper::WalletWrapper;
 use crate::{error::Error, tel::tel_event::TelState, tel::TEL};
 use base64::URL_SAFE;
 use jolocom_native_utils::did_document::DIDDocument;
 use keri::{
     database::lmdb::LmdbEventDatabase,
-    event::sections::{seal::EventSeal, KeyConfig},
-    event_message::parse,
     keri::Keri,
     prefix::{IdentifierPrefix, Prefix},
     signer::KeyManager,
-    state::{EventSemantics, IdentifierState},
+    state::IdentifierState,
 };
 use std::{convert::TryInto, path::Path};
 
@@ -113,46 +112,9 @@ impl Entity {
             .map_err(|e| Error::KeriError(e))
     }
 
-    /// Returns current Key Config associated with given event seal.
-    /// Note: Similar to function `get_keys_at_sn` in processor module in keriox,
-    /// but without processor.
-    // TODO should be in keriox, probably.
-    fn get_keys_at_sn(seal: &EventSeal, kel: &[u8]) -> Result<KeyConfig, Error> {
-        let sn = seal.sn;
-        let pref = seal.prefix.clone();
-        let s = parse::signed_event_stream(&kel).unwrap().1;
-
-        let state = s
-            .into_iter()
-            .take_while(|ev| match ev {
-                parse::Deserialized::Event(e) => {
-                    e.event.event.event.prefix == pref && e.event.event.event.sn <= sn
-                }
-                parse::Deserialized::Vrc(_) => true,
-                parse::Deserialized::Rct(_) => true,
-            })
-            .fold(IdentifierState::default(), |st, e| {
-                let em = match e {
-                    parse::Deserialized::Event(e) => e.event.event.apply_to(st).unwrap(),
-                    parse::Deserialized::Vrc(_) => st,
-                    parse::Deserialized::Rct(_) => st,
-                };
-                em
-            });
-
-        // Check if seal digest and digest of last state event match.
-        if seal.event_digest.derivation.derive(&state.last) != seal.event_digest {
-            Err(Error::Generic(
-                "seal digest doesnt match last event's digest".into(),
-            ))
-        } else {
-            Ok(state.current)
-        }
-    }
-
-    pub fn verify_vc(&self, vc: &[u8], signature: &[u8], tel: &TEL) -> Result<bool, Error> {
+    pub fn verify_vc(&self, vc: &[u8], signature: &[u8], tel: &TEL) -> Result<SignatureState, Error> {
         match tel.get_state() {
-            TelState::NotIsuued => Ok(false),
+            TelState::NotIsuued => Ok(SignatureState::Wrong),
             TelState::Issued(event_seal) => {
                 let state = self.keri.get_state_for_seal(&event_seal);
                 let keys = match state? {
@@ -181,9 +143,14 @@ impl Entity {
                     }
                     _ => false,
                 };
-                Ok(verification)
+                Ok(if verification {
+                    SignatureState::Ok
+                } else {
+                    SignatureState::Wrong
+                })
+                
             }
-            TelState::Revoked => Ok(false),
+            TelState::Revoked => Ok(SignatureState::Revoked),
         }
     }
 }
