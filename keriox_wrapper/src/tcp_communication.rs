@@ -36,19 +36,18 @@ impl TCPCommunication {
         msg.extend(message);
         let mut stream = TcpStream::connect(address.clone())?;
         stream.set_read_timeout(Some(Duration::from_millis(500)))?;
-        stream.write(&msg)?;
-        let mut buf = [0; 2048];
+        stream.write_all(&msg)?;
 
-        let n = stream.read(&mut buf)?;
+        let msg = TCPCommunication::read_all(&stream)?;
 
-        println!("{}", TCPCommunication::format_event_stream(&buf[..n], true));
-        let res = entity.respond(&buf[..n])?;
+        println!("{}", TCPCommunication::format_event_stream(&msg, true));
+        let res = entity.respond(&msg)?;
 
         if res.len() != 0 {
             let mut msg = [to_who, " "].join("").as_bytes().to_vec();
             msg.extend(res);
 
-            stream.write(&msg)?;
+            stream.write_all(&msg)?;
         }
         Ok(())
     }
@@ -72,20 +71,18 @@ impl TCPCommunication {
 
         loop {
             let (mut socket, _adr) = listener.accept()?;
-            socket.set_read_timeout(Some(Duration::from_millis(200)))?;
-            socket.set_write_timeout(Some(Duration::from_millis(200)))?;
+            &socket.set_read_timeout(Some(Duration::from_millis(200)))?;
+            &socket.set_write_timeout(Some(Duration::from_millis(200)))?;
 
             let c = Arc::clone(&controller);
 
-            let mut buf = vec![0; 2048];
             loop {
-                let n = socket.read(&mut buf)?;
+                let msg: Vec<u8> = TCPCommunication::read_all(&socket)?;
 
-                if n == 0 {
+                if msg.len() == 0 {
                     break;
                 }
-
-                let msg = &buf[..n];
+                let msg = &msg;
                 if msg.len() > 0 {
                     let k = c.lock().unwrap();
                     let receipt = k.parse_message(msg).expect("failed while event processing");
@@ -148,6 +145,25 @@ impl TCPCommunication {
         }
         out
     }
+    fn read_all(mut stream: &TcpStream) -> Result<Vec<u8>, Error> {
+        let mut buf = vec![0; 2048];
+        let mut msg: Vec<u8> = vec![];
+        match stream.read(&mut buf) {
+            Ok(m) => {
+                msg.extend(&buf[..m].to_vec());
+                let mut m = m;
+                while m == buf.len() {
+                    m = stream.read(&mut buf)?;
+
+                    msg.extend(&buf[..m].to_vec());
+                }
+            }
+            Err(e) => return Err(Error::CommunicationError(e)),
+        };
+
+        Ok(msg)
+    }
+
 
     pub fn get_address(&self) -> String {
         self.address.clone()

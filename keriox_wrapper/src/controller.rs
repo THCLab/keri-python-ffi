@@ -287,8 +287,8 @@ impl Controller {
             let cont = controller.lock().unwrap();
             cont.comm.get_address()
         };
-        thread::spawn(|| {
-            TCPCommunication::run(address, controller).unwrap();
+        thread::spawn(move || {
+            TCPCommunication::run(address, controller).expect("server runing failure");
         });
         Ok(())
     }
@@ -358,60 +358,60 @@ impl Controller {
     //     Ok(())
     // }
 }
-#[test]
-fn test_vc() -> Result<(), Error> {
-    use crate::tel::tel_event::TelState;
-    use tempfile::tempdir;
-    let db_dir = tempdir()?;
-    let db_path = db_dir.path().to_str().unwrap();
-    let adr_store_path = [db_dir.path().to_str().unwrap(), "adr"].join("");
-
-    let mut cont = Controller::new(db_path, "localhost:1212", &adr_store_path);
-
-    // Compute vc related stuff
-    let vc = "Some vc";
-    let vc_digest = blake3::hash(vc.as_bytes()).as_bytes().to_vec();
-    let vc_signature = cont.sign(vc)?;
-
-    cont.issue_vc(vc)?;
-
-    let vc_state = cont.tels.get_state(&vc_digest)?;
-    assert!(matches!(vc_state, TelState::Issued(_)));
-
-    let ver = {
-        let tel = cont.tels.get_tel(&vc_digest)?;
-        cont.main_entity
-            .verify_vc(vc.as_bytes(), &vc_signature, tel)?
-    };
-    assert!(ver);
-
-    // Rotate keys and verify vc again.
-    cont.update_keys()?;
-    let ver = {
-        let tel = cont.tels.get_tel(&vc_digest)?;
-        cont.main_entity
-            .verify_vc(vc.as_bytes(), &vc_signature, tel)?
-    };
-    assert!(ver);
-
-    cont.revoke_vc(vc)?;
-
-    let vc_state = cont.tels.get_state(&vc_digest)?;
-    assert!(matches!(vc_state, TelState::Revoked));
-
-    let tel = cont.tels.get_tel(&vc_digest)?;
-    let ver = cont
-        .main_entity
-        .verify_vc(vc.as_bytes(), &vc_signature, tel)?;
-    assert!(!ver);
-
-    Ok(())
-}
 
 #[cfg(test)]
-#[allow(non_snake_case)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_vc() -> Result<(), Error> {
+        use crate::tel::tel_event::TelState;
+        use tempfile::tempdir;
+        let db_dir = tempdir()?;
+        let db_path = db_dir.path().to_str().unwrap();
+        let adr_store_path = [db_dir.path().to_str().unwrap(), "adr"].join("");
+
+        let mut cont = Controller::new(db_path, "localhost:1212", &adr_store_path);
+
+        // Compute vc related stuff
+        let vc = "Some vc";
+        let vc_digest = blake3::hash(vc.as_bytes()).as_bytes().to_vec();
+        let vc_signature = cont.sign(vc)?;
+
+        cont.issue_vc(vc)?;
+
+        let vc_state = cont.tels.get_state(&vc_digest)?;
+        assert!(matches!(vc_state, TelState::Issued(_)));
+
+        let ver = {
+            let tel = cont.tels.get_tel(&vc_digest)?;
+            cont.main_entity
+                .verify_vc(vc.as_bytes(), &vc_signature, tel)?
+        };
+        assert!(ver);
+
+        // Rotate keys and verify vc again.
+        cont.update_keys()?;
+        let ver = {
+            let tel = cont.tels.get_tel(&vc_digest)?;
+            cont.main_entity
+                .verify_vc(vc.as_bytes(), &vc_signature, tel)?
+        };
+        assert!(ver);
+
+        cont.revoke_vc(vc)?;
+
+        let vc_state = cont.tels.get_state(&vc_digest)?;
+        assert!(matches!(vc_state, TelState::Revoked));
+
+        let tel = cont.tels.get_tel(&vc_digest)?;
+        let ver = cont
+            .main_entity
+            .verify_vc(vc.as_bytes(), &vc_signature, tel)?;
+        assert!(!ver);
+
+        Ok(())
+    }
 
     #[test]
     pub fn test_communication() -> Result<(), Error> {
@@ -428,33 +428,32 @@ mod tests {
         let vc_signature = cont.sign(vc)?;
 
         cont.issue_vc(vc)?;
-        // cont.update_keys()?;
+        cont.update_keys()?;
+
+        let issuer_state = cont.main_entity.get_state_for_prefix(&prefix.parse()?)?;
 
         let db_dir = tempdir()?;
         let db_path = db_dir.path().to_str().unwrap();
-        let shared = SharedController::from_controller(cont)?;
-        let s2 = shared.clone();
-        shared.run()?;
+        let issuer = SharedController::from_controller(cont)?;
+        issuer.clone().run()?;
 
-        let asking_cont = Controller::new(db_path, "localhost:3232", &adr_store_path);
-        let shared_asker = SharedController::from_controller(asking_cont)?;
-        let asker = shared_asker.clone();
-        shared_asker.run()?;
+        let shared_asker = SharedController::new(db_path, "localhost:3232", &adr_store_path)?;
+        shared_asker.clone().run()?;
 
-        // let ddoc = asker.get_did_doc(&s2.get_prefix().await?).await?;
-        // println!("cont didoc: \n{}", ddoc);
+        let ver = shared_asker.verify_vc(&prefix, vc, &vc_signature)?;
 
-        // let tel_vec = TCPCommunication::ask_for_tel(vc.as_bytes(), "localhost:1212")?;
-        // let tel: &TEL = &serde_json::from_str(from_utf8(&tel_vec).unwrap().trim()).unwrap();
-
-        // println!("tel: {:?}", tel);
-
-        let ver = asker.verify_vc(&prefix, vc, &vc_signature)?;
+        let issuer_state_in_asker = shared_asker
+            .controller
+            .lock()
+            .unwrap()
+            .main_entity
+            .get_state_for_prefix(&prefix.parse()?)?;
+        assert_eq!(issuer_state.unwrap().sn, issuer_state_in_asker.unwrap().sn);
 
         assert!(ver);
 
-        s2.revoke_vc(vc)?;
-        let ver = asker.verify_vc(&prefix, vc, &vc_signature)?;
+        issuer.revoke_vc(vc)?;
+        let ver = shared_asker.verify_vc(&prefix, vc, &vc_signature)?;
         assert!(!ver);
 
         Ok(())
