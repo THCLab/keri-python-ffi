@@ -2,6 +2,10 @@
 
 ## Usage
 
+### Prerequisits:
+
+    pip3 install blake3 
+
 ### Build
 
 Run script from `scripts/build_python.sh`
