@@ -7,29 +7,35 @@ import base64
 import json
 import blake3
 
+# Setup issuer
 issuer_temp_dir = tempfile.TemporaryDirectory()
 temp_address_provider = "./adr_db"
 issuer = Controller.new(issuer_temp_dir.name, 'localhost:5621', temp_address_provider)
 print("Issuer: did:keri:" + issuer.get_prefix() + "\n")
 
+# Construct vc
 issuer_id = ":".join(["did", "keri", issuer.get_prefix()])
 message = "hello there" 
+vc = {"issuer": issuer_id, "message": message }
+vc_str = json.dumps(vc)
 
-print("Issuer signs the message: " + message + "\n")
+print("Issuer signs the vc: " + vc_str + "\n")
 
-signature = issuer.issue_vc(message)
-
+signature = issuer.issue_vc(vc_str)
+ver_method = issuer_id
 b64_signature = base64.urlsafe_b64encode(bytes(signature)).decode("utf-8")
+proof = {"signature": b64_signature}
+vc["proof"] = proof
 
-crudential = {"issuer": issuer_id, "msg": message, "signature": b64_signature}
-print("Create VC: \n" + json.dumps(crudential, indent=4, sort_keys=True) + "\n")
+print("Create VC: \n" + json.dumps(vc, indent=4, sort_keys=True) + "\n")
 
-vc_hash = blake3.blake3(bytes(message, encoding='utf8')).digest()
+vc_hash = blake3.blake3(bytes(vc_str, encoding='utf8')).digest()
 b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
 print("VC hash: " + str(b64_vc_hash) + "\n")
 
+# Simulate sending the VC
 with open('buffor', 'w') as file:
-    file.write(json.dumps(crudential))
+    file.write(json.dumps(vc))
 
 issuer.run()
 while(True):
@@ -48,7 +54,7 @@ while(True):
     print(issuer.get_formatted_kerl())
   elif val == "rev":
     # revoke last vc
-    issuer.revoke_vc(message)
+    issuer.revoke_vc(vc_str)
     print("VC of digest: "+ b64_vc_hash + " was revoked. Current TEL:")
     print(issuer.get_formatted_tel(b64_vc_hash) + "\n")
   elif val == "kel":

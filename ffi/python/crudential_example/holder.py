@@ -7,6 +7,7 @@ import base64
 import json
 import blake3
 
+# Setup holder
 verifier_temp_dir = tempfile.TemporaryDirectory()
 temp_provider = "./adr_db"
 verifier = Controller.new(verifier_temp_dir.name, 'localhost:3456', temp_provider)
@@ -14,20 +15,23 @@ verifier.run()
 
 print("\nHolder: did:keri:" + verifier.get_prefix() + "\n")
 
+# Simulate getting the VC
 with open('buffor', 'r') as file:
     crud = file.read()
 crudential = json.loads(crud)
 print("Got VC: \n" + json.dumps(crudential, indent=4, sort_keys=True))
-    
+
+# Deconstruct VC to get issuer, message and proof
 issuer = crudential['issuer'].split(":")[2]
-msg = crudential['msg']
-signature = [x for x in base64.urlsafe_b64decode(crudential['signature'])]
+msg = crudential['message']
+proof = crudential['proof']
+b64_signature = proof['signature']
+signature = [x for x in base64.urlsafe_b64decode(b64_signature)]
+vc = {key: crudential[key] for key in ["issuer", "message"]}
+vc_str = json.dumps(vc)
 
 print("Asking did:keri:" + issuer + " for KEL and TEL:" )
-verification = verifier.verify_vc(issuer, msg, signature)
-
-# print("\nIssuer's DIDDoc: \n" + json.dumps(json.loads(verifier.get_did_doc(issuer)), indent=4, sort_keys=True) + "\n")
-
+verification = verifier.verify_vc(issuer, vc_str, signature)
 
 if verification == SignatureState.Ok:
     print("VC is signed by " + issuer + "\n")
