@@ -16,7 +16,7 @@ verifier.run()
 print("\nHolder: did:keri:" + verifier.get_prefix() + "\n")
 
 # Simulate getting the VC
-with open('buffor', 'r') as file:
+with open('last_crudential', 'r') as file:
     crud = file.read()
 crudential = json.loads(crud)
 print("Got VC: \n" + json.dumps(crudential, indent=4, sort_keys=True))
@@ -27,6 +27,7 @@ msg = crudential['message']
 proof = crudential['proof']
 b64_signature = proof['signature']
 signature = [x for x in base64.urlsafe_b64decode(b64_signature)]
+# Choose only issuer and message field
 vc = {key: crudential[key] for key in ["issuer", "message"]}
 vc_str = json.dumps(vc)
 
