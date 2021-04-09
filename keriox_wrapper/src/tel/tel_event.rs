@@ -27,16 +27,27 @@ pub struct TelEvent {
     signature: Vec<u8>,
 }
 
-
 impl fmt::Display for TelEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let _issuer = ["issuer: ", &self.event_seal.prefix.to_str()].join("");
-        let operation = ["operation: ", &serde_json::to_string(&self.operation).unwrap()].join("");
-        let _signature = ["signature: ", &base64::encode_config(&self.signature, URL_SAFE)].join("");
+        let operation = [
+            "operation: ",
+            &serde_json::to_string(&self.operation).unwrap(),
+        ]
+        .join("");
+        let _signature = [
+            "signature: ",
+            &base64::encode_config(&self.signature, URL_SAFE),
+        ]
+        .join("");
         let sn = ["sn: ", &self.event_seal.sn.to_string()].join("");
-        let _digest = ["issuence event digest: ", &self.event_seal.event_digest.to_str()].join("");
+        let _digest = [
+            "issuence event digest: ",
+            &self.event_seal.event_digest.to_str(),
+        ]
+        .join("");
 
-    write!(f, "\t{}", [sn, operation].join(", "))
+        write!(f, "\t{}", [sn, operation].join(", "))
     }
 }
 

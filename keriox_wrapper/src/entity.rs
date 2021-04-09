@@ -112,7 +112,12 @@ impl Entity {
             .map_err(|e| Error::KeriError(e))
     }
 
-    pub fn verify_vc(&self, vc: &[u8], signature: &[u8], tel: &TEL) -> Result<SignatureState, Error> {
+    pub fn verify_vc(
+        &self,
+        vc: &[u8],
+        signature: &[u8],
+        tel: &TEL,
+    ) -> Result<SignatureState, Error> {
         match tel.get_state() {
             TelState::NotIsuued => Ok(SignatureState::Wrong),
             TelState::Issued(event_seal) => {
@@ -148,7 +153,6 @@ impl Entity {
                 } else {
                     SignatureState::Wrong
                 })
-                
             }
             TelState::Revoked => Ok(SignatureState::Revoked),
         }

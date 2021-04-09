@@ -2,7 +2,12 @@ use crate::{
     address_provider::AddressProvider, controller::Controller, entity::Entity, error::Error,
 };
 use base64::URL_SAFE;
-use keri::{event_message::parse, prefix::Prefix};
+use keri::{
+    event::event_data::EventData,
+    event::sections::seal::Seal,
+    event_message::parse::{signed_event_stream, Deserialized},
+    prefix::Prefix,
+};
 use std::{
     io::{Read, Write},
     net::{TcpListener, TcpStream},
@@ -96,12 +101,12 @@ impl TCPCommunication {
 
     pub fn format_event_stream(msg: &[u8], incoming: bool) -> String {
         let mut out = String::new();
-        let s = parse::signed_event_stream(msg).unwrap().1;
+        let s = signed_event_stream(msg).unwrap().1;
         for ev in s {
             match ev {
-                parse::Deserialized::Event(e) => {
+                Deserialized::Event(e) => {
                     let t = match e.event.event.event.event_data {
-                        keri::event::event_data::EventData::Icp(icp) => {
+                        EventData::Icp(icp) => {
                             if incoming {
                                 out.push_str(
                                     &[
@@ -123,7 +128,7 @@ impl TCPCommunication {
                             ]
                             .join(" ")
                         }
-                        keri::event::event_data::EventData::Rot(e) => [
+                        EventData::Rot(e) => [
                             "rotation, current key:",
                             &e.key_config
                                 .public_keys
@@ -133,23 +138,27 @@ impl TCPCommunication {
                                 .join(", "),
                         ]
                         .join(" "),
-                        keri::event::event_data::EventData::Ixn(ixn) => {
+                        EventData::Ixn(ixn) => {
                             let digest = match ixn.data[0] {
-                                keri::event::sections::seal::Seal::Event(ref es) => {base64::encode_config(&es.event_digest.digest, URL_SAFE)}
-                                keri::event::sections::seal::Seal::Location(_) => {"".into()}
-                                keri::event::sections::seal::Seal::Digest(ref d) => {base64::encode_config(&d.dig.digest, URL_SAFE)}
-                                keri::event::sections::seal::Seal::Root(_) => {"".into()}
+                                Seal::Event(ref es) => {
+                                    base64::encode_config(&es.event_digest.digest, URL_SAFE)
+                                }
+                                Seal::Location(_) => "".into(),
+                                Seal::Digest(ref d) => {
+                                    base64::encode_config(&d.dig.digest, URL_SAFE)
+                                }
+                                Seal::Root(_) => "".into(),
                             };
                             ["interaction,".to_string(), "digest:".to_string(), digest].join(" ")
-                        },
+                        }
                         _ => "".to_string(),
                     };
                     out.push_str(&format!("\tsn: {}, type: {}\n", e.event.event.event.sn, t));
                 }
-                parse::Deserialized::Vrc(_) => {
+                Deserialized::Vrc(_) => {
                     // println!("\ttype: {}", "receipt");
                 }
-                parse::Deserialized::Rct(_) => {}
+                Deserialized::Rct(_) => {}
             }
         }
         out

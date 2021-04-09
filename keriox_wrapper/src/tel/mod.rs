@@ -13,7 +13,6 @@ pub struct TEL {
     state: TelState,
 }
 
-
 impl fmt::Display for TEL {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let list: Vec<_> = self.events.iter().map(|ev| ev.to_string()).collect();
@@ -45,11 +44,8 @@ impl TEL {
 mod tests {
     use crate::error::Error;
 
-
     #[test]
     fn test() -> Result<(), Error> {
-        
         Ok(())
     }
-
 }
