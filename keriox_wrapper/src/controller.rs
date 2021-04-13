@@ -147,28 +147,32 @@ impl SharedController {
 
     pub fn verify_vc(
         &self,
-        issuer_id: &str,
-        msg: &str,
-        signature: &[u8],
+        signed_datum: &SignedAttestationDatum,
     ) -> Result<SignatureState, Error> {
-        let signed_datum =
-            AttestationDatum::new(msg, issuer_id).attach_signature(signature.to_vec())?;
         let e = self.controller.lock().unwrap();
         e.verify_vc(signed_datum)
     }
 
     // Returns signature of last vc.
-    pub fn issue_vc(&self, msg: &str) -> Result<Vec<u8>, Error> {
+    pub fn issue_vc(&self, msg: &str) -> Result<SignedAttestationDatum, Error> {
         let mut e = self.controller.lock().unwrap();
         let ad = AttestationDatum::new(msg, &e.main_entity.get_prefix()?);
-        let ad = e.issue_vc(&ad)?;
-        ad.get_signature()
+        e.issue_vc(&ad)
     }
 
     pub fn revoke_vc(&self, msg: &str) -> Result<(), Error> {
         let mut e = self.controller.lock().unwrap();
-        let ad = AttestationDatum::new(msg, &e.main_entity.get_prefix()?);
+        let ad: AttestationDatum = serde_json::from_str(&msg).unwrap();
         e.revoke_vc(&ad)
+    }
+
+    pub fn sign_message(&self, msg: &str) -> Result<SignedAttestationDatum, Error> {
+        let pref = self.get_prefix()?;
+        let ad = AttestationDatum::new(msg, &pref);
+        let vc_str = serde_json::to_string(&ad)
+            .map_err(|_e| Error::Generic("Can't serialize attestation datum".into()))?;
+        let signature = self.sign(&vc_str)?;
+        ad.attach_signature(signature)
     }
 }
 
@@ -315,10 +319,12 @@ impl Controller {
         Ok(())
     }
 
-    pub fn verify_vc(&self, signed_datum: SignedAttestationDatum) -> Result<SignatureState, Error> {
+    pub fn verify_vc(
+        &self,
+        signed_datum: &SignedAttestationDatum,
+    ) -> Result<SignatureState, Error> {
         let attestation_datum = signed_datum.get_attestation_datum()?;
-        let datum = signed_datum.get_datum();
-        let issuer = datum.issuer;
+        let issuer = signed_datum.get_issuer()?;
         let signature = signed_datum.get_signature()?;
 
         // Make sure that issuer kel is in db
@@ -330,11 +336,19 @@ impl Controller {
         let address = self.comm.get_address_for_prefix(&issuer)?.unwrap();
         let tel: TEL = {
             let tel_vec = TCPCommunication::ask_for_tel(attestation_datum.as_bytes(), &address)?;
-            serde_json::from_str(from_utf8(&tel_vec).unwrap().trim()).unwrap()
+            let tel_str = from_utf8(&tel_vec).map_err(|e| Error::Generic(e.to_string()))?;
+            serde_json::from_str(tel_str.trim()).map_err(|e| Error::Generic(e.to_string()))?
         };
 
         self.main_entity
             .verify_vc(attestation_datum.as_bytes(), &signature, &tel)
+    }
+
+    pub fn sign_message(&mut self, msg: &str) -> Result<Vec<u8>, Error> {
+        let attestation_datum = AttestationDatum::new(msg, &self.main_entity.get_prefix()?);
+        let signed_attestation_datum = self.issue_vc(&attestation_datum)?;
+
+        signed_attestation_datum.get_signature()
     }
 
     pub fn run(controller: Arc<Mutex<Controller>>) -> Result<(), Error> {
@@ -434,7 +448,8 @@ mod tests {
         let attestation_datum = AttestationDatum::new(msg, &cont.main_entity.get_prefix()?);
         let signed_attestation_datum = cont.issue_vc(&attestation_datum)?;
         let ad_str = signed_attestation_datum.get_attestation_datum()?;
-        let vc_signature = cont.sign(&ad_str)?;
+        let vc_signature = signed_attestation_datum.get_signature()?;
+
         let vc_digest = blake3::hash(ad_str.as_bytes()).as_bytes().to_vec();
 
         let vc_state = cont.tels.get_state(&vc_digest)?;
@@ -484,7 +499,6 @@ mod tests {
         let ad = AttestationDatum::new(msg, &prefix);
 
         let signed_ad = cont.issue_vc(&ad)?;
-        let vc_signature = signed_ad.get_signature()?;
         cont.update_keys()?;
 
         let issuer_state = cont.main_entity.get_state_for_prefix(&prefix.parse()?)?;
@@ -497,7 +511,7 @@ mod tests {
         let shared_asker = SharedController::new(db_path, "localhost:3232", &adr_store_path)?;
         shared_asker.clone().run()?;
 
-        let ver = shared_asker.verify_vc(&prefix, msg, &vc_signature)?;
+        let ver = shared_asker.verify_vc(&signed_ad)?;
         assert!(matches!(ver, SignatureState::Ok));
 
         let issuer_state_in_asker = shared_asker
@@ -509,34 +523,9 @@ mod tests {
         assert_eq!(issuer_state.unwrap().sn, issuer_state_in_asker.unwrap().sn);
 
         issuer.revoke_vc(msg)?;
-        let ver = shared_asker.verify_vc(&prefix, msg, &vc_signature)?;
+        let ver = shared_asker.verify_vc(&signed_ad)?;
         assert!(matches!(ver, SignatureState::Revoked));
 
         Ok(())
     }
-}
-
-#[test]
-pub fn test_attestation() -> Result<(), Error> {
-    use crate::datum::AttestationDatum;
-    use tempfile::tempdir;
-    let db_dir = tempdir()?;
-    let db_path = db_dir.path().to_str().unwrap();
-    let adr_store_path = [db_dir.path().to_str().unwrap(), "adr"].join("");
-
-    let cont = Controller::new(db_path, "localhost:1212", &adr_store_path);
-
-    let prefix = cont.main_entity.get_prefix()?;
-    // Compute vc related stuff
-    let msg = "Some vc";
-
-    let vc = AttestationDatum::new(msg, &prefix);
-    let vc_str = serde_json::to_string(&vc).unwrap();
-    let vc_signature = cont.sign(&vc_str)?;
-
-    let signed_ad = vc.attach_signature(vc_signature)?;
-    let vc_str = serde_json::to_string_pretty(&signed_ad).unwrap();
-    println!("{}", vc_str);
-
-    Ok(())
 }

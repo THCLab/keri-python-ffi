@@ -63,7 +63,7 @@ impl TCPCommunication {
         msg.extend(vc);
         let mut stream = TcpStream::connect(address.clone())?;
         stream.write_all(&msg)?;
-        // println!("Sent:\n{}\n", from_utf8(&msg).unwrap());
+        // println!("Sent:\n{}\n", String::from_utf8(msg).unwrap());
         let mut buf = [0; 2048];
         let n = stream.read(&mut buf)?;
         let m = buf[..n].to_vec().clone();

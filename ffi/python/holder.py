@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 sys.path.append("..")
-from libs.libkel_utils import Controller, SignatureState 
+from libs.libkel_utils import Controller, SignatureState, SignedAttestationDatum 
 import tempfile
 import base64
 import json
@@ -18,26 +18,19 @@ print("\nHolder: did:keri:" + verifier.get_prefix() + "\n")
 # Simulate getting the VC
 with open('last_crudential', 'r') as file:
     crud = file.read()
-crudential = json.loads(crud)
-print("Got VC: \n" + json.dumps(crudential, indent=4, sort_keys=True))
+signed_data = SignedAttestationDatum.deserialize(crud)
+print("Got VC: \n" + signed_data.serialize())
 
-# Deconstruct VC to get issuer, message and proof
-issuer = crudential['issuer'].split(":")[2]
-msg = crudential['message']
-proof = crudential['proof']
-b64_signature = proof['signature']
-signature = [x for x in base64.urlsafe_b64decode(b64_signature)]
-# Choose only issuer and message field
-vc = {key: crudential[key] for key in ["issuer", "message"]}
-vc_str = json.dumps(vc)
+issuer = signed_data.get_issuer()
 
 print("Asking did:keri:" + issuer + " for KEL and TEL:" )
-verification = verifier.verify_vc(issuer, vc_str, signature)
+verification = verifier.verify_vc(signed_data)
 
 if verification == SignatureState.Ok:
     print("VC is signed by " + issuer + "\n")
 elif verification == SignatureState.Revoked:
-    vc_hash = blake3.blake3(bytes(msg, encoding='utf8')).digest()
+    vc_str = signed_data.get_attestation_datum()
+    vc_hash = blake3.blake3(bytes(vc_str, encoding='utf8')).digest()
     vc_b64_hash = str(base64.urlsafe_b64encode(vc_hash).decode())
     print("VC of digest " + vc_b64_hash + " has been revoked\n")
 elif verification == SignatureState.Wrong:

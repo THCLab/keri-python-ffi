@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 sys.path.append("..")
-from libs.libkel_utils import Controller, SignatureState
+from libs.libkel_utils import Controller, SignatureState, SignedAttestationDatum
 import tempfile
 import base64
 import json
@@ -17,12 +17,11 @@ controller = Controller.new(temp_dir.name, adress, temp_address_provider)
 print("\nController: did:keri:" + controller.get_prefix() + "\n")
 
 controller_id = ":".join(["did", "keri", controller.get_prefix()])
+b64_vc_hash = ""
 
 # Last signed VC
 vc = ""
-
 controller.run()
-
 
 while(True):
   command = """
@@ -55,72 +54,48 @@ while(True):
     print(controller.get_formatted_tel(b64_vc_hash) + "\n")
   
   elif val == "tel":
-    print("vc digest: "+ b64_vc_hash)
-    print(controller.get_formatted_tel(b64_vc_hash) + "\n")
+    # print tel of last signed vc
+    if len(b64_vc_hash) > 0:
+      print("vc digest: "+ b64_vc_hash)
+      print(controller.get_formatted_tel(b64_vc_hash) + "\n")
+    else:
+      print("No vc has been signed yet\n")
   
   elif val[:4] == "sign":
     inp = val.split(" ", 1)
-    message = inp[1]
+    try:
+      message = inp[1]
+      signed_data = controller.issue_vc(message)
 
-    # Construct crudential
-    issuer_id = ":".join(["did", "keri", controller.get_prefix()])
-    vc = {"issuer": issuer_id, "message": message }
-    vc_str = json.dumps(vc)
+      # create crudential and write it to file
+      # TODO use some better way of sending crudential than the file.
+      with open('last_crudential', 'w') as file:
+        ser = signed_data.serialize()
+        file.write(ser + "\n")
 
-    print("Issuer signs the vc: " + vc_str + "\n")
-
-    signature = controller.issue_vc(vc_str)
-    b64_signature = base64.urlsafe_b64encode(bytes(signature)).decode("utf-8")
-    proof = {"signature": b64_signature}
-    vc["proof"] = proof
-
-    # create crudential and write it to file
-    # TODO use some better way of sending crudential than the file.
-    with open('last_crudential', 'w') as file:
-      file.write(json.dumps(vc) + "\n")
-    print("Create VC: \n" + json.dumps(vc, indent=4, sort_keys=True) + "\n")
-    vc_hash = blake3.blake3(bytes(vc_str, encoding='utf8')).digest()
-    b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
-    print("VC hash:\n\t" + str(b64_vc_hash) + "\n")
-    print("Current KEL:\n" + controller.get_kerl())
-    vc = vc_str
+      # Pretty printing the vc json
+      vc_dict = json.loads(signed_data.serialize())
+      pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
+      print("Issuer creates the vc: \n" + pretty_vc + "\n")
   
-  # elif val[:6] == "verify":
-  #   # read crudential from file and verify the signature
-  #   with open('last_crudential', 'r') as file:
-  #     crud = file.read()
-  #   crudential = json.loads(crud)
-  #   print("Got VC: \n" + json.dumps(crudential, indent=4, sort_keys=True))
-        
-  #   # Deconstruct VC to get issuer, message and proof
-  #   issuer = crudential['issuer'].split(":")[2]
-  #   msg = crudential['message']
-  #   proof = crudential['proof']
-  #   b64_signature = proof['signature']
-
-  #   signature = [x for x in base64.urlsafe_b64decode(b64_signature)]
-  #   # Choose only issuer and message field
-  #   vc = {key: crudential[key] for key in ["issuer", "message"]}
-  #   vc_str = json.dumps(vc)
-
-  #   print("Asking did:keri:" + issuer + " for KEL and TEL:" )
-
-  #   verification = controller.verify_vc(issuer, vc_str, signature)
-  #   if verification == SignatureState.Ok:
-  #     print("VC is signed by " + issuer + "\n")
-  #   elif verification == SignatureState.Revoked:
-  #     vc_hash = blake3.blake3(bytes(msg, encoding='utf8')).digest()
-  #     vc_b64_hash = str(base64.urlsafe_b64encode(vc_hash).decode())
-  #     print("VC of digest " + vc_b64_hash + " has been revoked\n")
-  #   elif verification == SignatureState.Wrong:
-  #     print("Signature is wrong. VC is not signed by " + issuer + "\n")
-
+      vc = signed_data.get_attestation_datum()
+      vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
+      b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
+      print("VC hash:\n\t" + str(b64_vc_hash) + "\n")
+      print("Current KEL:\n" + controller.get_kerl())
+    except:
+      print("No message to sign\n")
+ 
   elif val[:6] == "diddoc":
     # get did document for given prefix
     inp = val.split(" ")
-    ddoc = controller.get_did_doc(inp[1].strip())
-    formated_ddoc = json.dumps(json.loads(ddoc), indent=4, sort_keys=True)
-    print("\n" + "did document: \n" + formated_ddoc + "\n")
+    try:
+      prefix = inp[1].strip()
+      ddoc = controller.get_did_doc(prefix)
+      formated_ddoc = json.dumps(json.loads(ddoc), indent=4, sort_keys=True)
+      print("\n" + "did document: \n" + formated_ddoc + "\n")
+    except:
+      print("Missing prefix\n")
   
 temp_dir.cleanup()
 dir.cleanup()
