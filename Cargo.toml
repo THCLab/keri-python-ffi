@@ -2,5 +2,5 @@
 
 members = [
 	"ffi",
-	"keriox_wrapper",
+	"keri_ecosystem",
 ]

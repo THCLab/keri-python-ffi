@@ -1,6 +1,6 @@
 use std::fmt;
-use keriox_wrapper::controller::{SharedController, SignatureState};
-use keriox_wrapper::datum::SignedAttestationDatum;
+use keri_ecosystem::controller::{SharedController, SignatureState};
+use keri_ecosystem::datum::SignedAttestationDatum;
 
 foreign_enum!(
     enum SignatureState {

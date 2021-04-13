@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 sys.path.append("..")
-from libs.libkel_utils import Controller, SignatureState, SignedAttestationDatum 
+from libs.libkeri_ecosystem import Controller, SignatureState, SignedAttestationDatum 
 import tempfile
 import base64
 import json

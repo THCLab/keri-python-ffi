@@ -18,10 +18,12 @@ use keri::{
     state::IdentifierState,
 };
 
+pub mod entity;
+
 use crate::{
-    entity::Entity,
+    controller::entity::Entity,
     error::Error,
-    tcp_communication::TCPCommunication,
+    communication::tcp_communication::TCPCommunication,
     tel::{
         tel_event::{Operation, TelEvent},
         tel_manager::TelManager,
@@ -522,7 +524,7 @@ mod tests {
             .get_state_for_prefix(&prefix.parse()?)?;
         assert_eq!(issuer_state.unwrap().sn, issuer_state_in_asker.unwrap().sn);
 
-        issuer.revoke_vc(msg)?;
+        issuer.revoke_vc(&serde_json::to_string(&ad).unwrap())?;
         let ver = shared_asker.verify_vc(&signed_ad)?;
         assert!(matches!(ver, SignatureState::Revoked));
 

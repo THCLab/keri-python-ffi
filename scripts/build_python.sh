@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASE_DIR=$(realpath $(dirname "$0")/..)
-LIB_NAME="kel_utils"
+LIB_NAME="keri_ecosystem"
 
 cd $BASE_DIR
 cargo build --release

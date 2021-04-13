@@ -7,11 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "kel_utils"
+name = "keri_ecosystem"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-keriox_wrapper = { path = "../keriox_wrapper" }
+keri_ecosystem = { path = "../keri_ecosystem" }
 cpython = { version = "0.3", features = ["extension-module"] }
 
 [build-dependencies]

@@ -1,5 +1,5 @@
 use crate::{
-    address_provider::AddressProvider, controller::Controller, entity::Entity, error::Error,
+    communication::address_provider::AddressProvider, controller::Controller, controller::entity::Entity, error::Error,
 };
 use base64::URL_SAFE;
 use keri::{
