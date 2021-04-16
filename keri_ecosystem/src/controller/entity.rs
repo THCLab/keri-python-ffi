@@ -1,5 +1,5 @@
-use crate::controller::SignatureState;
 use crate::wallet_wrapper::WalletWrapper;
+use crate::{controller::SignatureState, kerl::KERL};
 use crate::{error::Error, tel::tel_event::TelState, tel::TEL};
 use base64::URL_SAFE;
 use jolocom_native_utils::did_document::DIDDocument;
@@ -13,8 +13,8 @@ use keri::{
 use std::{convert::TryInto, path::Path};
 
 pub struct Entity {
-    keri: Keri<LmdbEventDatabase, WalletWrapper>,
-    wallet: WalletWrapper,
+    keri: KERL<LmdbEventDatabase>,
+    pub wallet: WalletWrapper,
 }
 
 impl Entity {
@@ -22,14 +22,9 @@ impl Entity {
         let db = LmdbEventDatabase::new(Path::new(db_path))
             .map_err(|e| Error::Generic(e.to_string()))?;
         let enc_wallet = WalletWrapper::new_encrypted_wallet("pass")?;
-        let mut keri = Keri::new(
-            db,
-            WalletWrapper::to_wallet(enc_wallet.clone(), "pass")?,
-            IdentifierPrefix::default(),
-        )?;
-        keri.incept()?;
-
+        let mut keri = KERL::new(db, IdentifierPrefix::default())?;
         let wallet = WalletWrapper::to_wallet(enc_wallet, "pass")?;
+        keri.incept(&wallet)?;
 
         Ok(Self { keri, wallet })
     }
@@ -40,8 +35,8 @@ impl Entity {
         let db = LmdbEventDatabase::new(Path::new(db_path))
             .map_err(|e| Error::Generic(e.to_string()))?;
         let wallet = WalletWrapper::incept_wallet_from_seed(seeds.clone())?;
-        let mut keri = Keri::new(db, wallet, IdentifierPrefix::default())?;
-        keri.incept()?;
+        let mut keri = KERL::new(db, IdentifierPrefix::default())?;
+        keri.incept(&wallet)?;
 
         Ok(Self {
             keri,
@@ -50,30 +45,24 @@ impl Entity {
     }
 
     pub fn update_keys(&mut self) -> Result<(), Error> {
-        self.keri.rotate()?;
-        self.wallet.rotate()?;
+        self.keri.rotate(&mut self.wallet)?;
         Ok(())
     }
 
     pub fn append(&mut self, msg: &str) -> Result<(), Error> {
         let payload = if msg.is_empty() { None } else { Some(msg) };
-        self.keri.make_ixn(payload)?;
+        self.keri.make_ixn(payload, &self.wallet)?;
         Ok(())
     }
 
     pub fn get_kerl(&self) -> Result<Vec<u8>, Error> {
-        let kerl = self
-            .keri
-            .get_kerl()
-            .map_err(|e| Error::KeriError(e))?
-            .unwrap_or(vec![]);
+        let kerl = self.keri.get_kerl()?.unwrap_or(vec![]);
         Ok(kerl)
     }
 
     pub fn get_prefix(&self) -> Result<String, Error> {
         self.keri
-            .get_state()
-            .map_err(|e| Error::KeriError(e))?
+            .get_state()?
             .map(|s| s.prefix.to_str())
             .ok_or(Error::Generic("There is no prefix".into()))
     }
@@ -82,14 +71,12 @@ impl Entity {
         &self,
         id: &IdentifierPrefix,
     ) -> Result<Option<IdentifierState>, Error> {
-        self.keri
-            .get_state_for_prefix(id)
-            .map_err(|e| Error::KeriError(e))
+        self.keri.get_state_for_prefix(id)
     }
 
     pub fn respond(&self, msg: &[u8]) -> Result<Vec<u8>, Error> {
         self.keri
-            .respond(msg)
+            .respond(msg, &self.wallet)
             .map_err(|e| Error::Generic(e.to_string()))
     }
 

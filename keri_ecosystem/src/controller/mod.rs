@@ -15,15 +15,16 @@ use keri::{
     derivation::self_addressing::SelfAddressing,
     event::sections::seal::EventSeal,
     prefix::{IdentifierPrefix, Prefix},
+    signer::KeyManager,
     state::IdentifierState,
 };
 
 pub mod entity;
 
 use crate::{
+    communication::tcp_communication::TCPCommunication,
     controller::entity::Entity,
     error::Error,
-    communication::tcp_communication::TCPCommunication,
     tel::{
         tel_event::{Operation, TelEvent},
         tel_manager::TelManager,
@@ -417,6 +418,14 @@ impl Controller {
                 Ok(entity.get_state_for_prefix(id)?)
             }
         }
+    }
+
+    pub fn get_prefix(&self) -> Result<String, Error> {
+        self.main_entity.get_prefix()
+    }
+
+    pub fn get_current_pk(&self) -> Vec<u8> {
+        self.main_entity.wallet.public_key().0.clone()
     }
 
     // pub fn get_kerl_for_pref(&self, prefix: &str) -> Result<Vec<u8>, Error> {

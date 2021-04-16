@@ -200,7 +200,6 @@ pub fn test_attestation_id_serialization() -> Result<(), Error> {
     assert_eq!(deser_id.attestation_id, id.attestation_id);
 
     Ok(())
-
 }
 
 #[test]

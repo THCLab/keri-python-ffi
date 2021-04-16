@@ -1,2 +1,2 @@
-pub mod tcp_communication;
 mod address_provider;
+pub mod tcp_communication;
