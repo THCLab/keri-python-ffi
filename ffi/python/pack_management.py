@@ -64,7 +64,7 @@ input("\nPress enter to continue...")
 # Insert to pack kel interaction event with document hash.
 # ========================================================
 print("\n====================================================")
-print("\tReceiving te package by the courier in progress...")
+print("\tReceiving the package by the courier in progress...")
 print("===================================================\n")
 pack.transfer_ownership(courier, storage, "Got pack from " + courier.get_prefix())
 input("\nPress enter to continue...")

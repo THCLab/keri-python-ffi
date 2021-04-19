@@ -13,7 +13,16 @@ Run script from `scripts/build_python.sh`
 Output `.so` file is copied to `ffi/python/libs` folder.
 
 ### Examples
-To run example go to `ffi/python` and run:
+To run supply chain example go to `ffi/python` and run:
+
+    python3 pack.py
+
+Then open another terminal and run: 
+
+    python3 pack_management.py
+
+
+To run controller example go to `ffi/python` and run:
 
     python3 controller_example.py
 
