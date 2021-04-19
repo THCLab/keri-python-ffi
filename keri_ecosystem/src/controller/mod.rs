@@ -40,7 +40,7 @@ pub enum SignatureState {
 
 #[derive(Clone)]
 pub struct SharedController {
-    controller: Arc<Mutex<Controller>>,
+    pub controller: Arc<Mutex<Controller>>,
 }
 
 impl SharedController {
@@ -60,6 +60,17 @@ impl SharedController {
         })
     }
 
+    pub fn get_current_pk(&self) -> Vec<u8> {
+        let e = self.controller.lock().unwrap();
+        e.get_current_pk()
+        
+    }
+
+    pub fn get_next_pk(&self) -> Vec<u8> {
+        let e = self.controller.lock().unwrap();
+        e.get_next_pk()
+        
+    }
     // pub fn new_from_seeds(
     //     db_path: &str,
     //     address: &str,
@@ -426,6 +437,10 @@ impl Controller {
 
     pub fn get_current_pk(&self) -> Vec<u8> {
         self.main_entity.wallet.public_key().0.clone()
+    }
+    
+    pub fn get_next_pk(&self) -> Vec<u8> {
+        self.main_entity.wallet.next_public_key().0.clone()
     }
 
     // pub fn get_kerl_for_pref(&self, prefix: &str) -> Result<Vec<u8>, Error> {

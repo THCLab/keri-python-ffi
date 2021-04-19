@@ -164,7 +164,7 @@ impl TCPCommunication {
         }
         out
     }
-    fn read_all(mut stream: &TcpStream) -> Result<Vec<u8>, Error> {
+    pub fn read_all(mut stream: &TcpStream) -> Result<Vec<u8>, Error> {
         let mut buf = vec![0; 2048];
         let mut msg: Vec<u8> = vec![];
         match stream.read(&mut buf) {

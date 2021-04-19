@@ -2,37 +2,27 @@ use crate::{controller::Controller, datum::SignedAttestationDatum, error::Error}
 
 use crate::kerl::{event_generator, KERL};
 use keri::{
-    database::{EventDatabase},
-    event::{EventMessage},
+    database::{lmdb::LmdbEventDatabase, EventDatabase},
+    event::EventMessage,
     event_message::SignedEventMessage,
     prefix::IdentifierPrefix,
     state::IdentifierState,
 };
 
-pub struct Thing<D: EventDatabase> {
-    kerl: KERL<D>,
+pub struct Thing {
+    kerl: KERL<LmdbEventDatabase>,
     vc_storage: Vec<SignedAttestationDatum>,
 }
 
-impl<D: EventDatabase> Thing<D> {
-    pub fn new(db: D, prefix: IdentifierPrefix) -> Self {
+impl Thing {
+    pub fn new(db: LmdbEventDatabase, prefix: IdentifierPrefix) -> Self {
         Thing {
             kerl: KERL::new(db, prefix).unwrap(),
             vc_storage: vec![],
         }
     }
 
-    pub fn add_document(
-        &mut self,
-        document: SignedAttestationDatum,
-        signer: &Controller,
-    ) -> Result<(), Error> {
-        // Append interaction event to pack KEL.
-        let vc_str = document.get_attestation_datum()?;
-        let ixn = event_generator::make_ixn(Some(&vc_str), self.kerl.get_state()?.unwrap())?;
-        let signature = signer.sign(std::str::from_utf8(&ixn.serialize()?).unwrap())?;
-        self.kerl.process(ixn, signature)?;
-
+    pub fn add_document(&mut self, document: SignedAttestationDatum) -> Result<(), Error> {
         // Insert document to storage
         self.vc_storage.push(document);
 
@@ -84,8 +74,8 @@ pub fn test_pack() -> Result<(), Error> {
     use crate::communication::tcp_communication::TCPCommunication;
     use crate::controller::Controller;
     use crate::datum::AttestationDatum;
-    use keri::database::lmdb::LmdbEventDatabase;
     use event_generator::{Key, KeyType};
+    use keri::database::lmdb::LmdbEventDatabase;
 
     let temp_dir = tempdir().unwrap();
     let adr_store_path = [temp_dir.path().to_str().unwrap(), "adr"].join("");
@@ -138,12 +128,17 @@ pub fn test_pack() -> Result<(), Error> {
     // Insert reciver id in the pack kerl
     let sender_prefix = sender.get_prefix()?;
     // Compute vc related stuff
-    let msg = format!("I send pack to {}", receiver_pref);
+    let msg = format!("Pack sent to {}", receiver_pref);
     let sender_vc = AttestationDatum::new(&msg, &sender_prefix);
     let signed_ad = sender.issue_vc(&sender_vc)?;
 
+    let vc_str = signed_ad.get_attestation_datum()?;
+    let ixn = event_generator::make_ixn(Some(&vc_str), pack.kerl.get_state()?.unwrap())?;
+    let signature = sender.sign(std::str::from_utf8(&ixn.serialize()?).unwrap())?;
+    pack.process(ixn, signature)?;
+
     // Add document to pack. It adds document to pack vcx store and adds interaction event to pack kerl.
-    pack.add_document(signed_ad, &sender)?;
+    pack.add_document(signed_ad)?;
 
     // =========================================================
     // Courier got the pack. Rotate key to storage public key as next.
@@ -165,8 +160,13 @@ pub fn test_pack() -> Result<(), Error> {
 
     let signed_ad = courier.issue_vc(&ad).unwrap();
 
+    let vc_str = signed_ad.get_attestation_datum()?;
+    let ixn = event_generator::make_ixn(Some(&vc_str), pack.kerl.get_state()?.unwrap())?;
+    let signature = courier.sign(std::str::from_utf8(&ixn.serialize()?).unwrap())?;
+    pack.process(ixn, signature)?;
+
     // Append interaction event to pack KEL.
-    pack.add_document(signed_ad, &courier)?;
+    pack.add_document(signed_ad)?;
 
     let formatted_kerl = TCPCommunication::format_event_stream(&pack.get_kerl()?.unwrap(), false);
 

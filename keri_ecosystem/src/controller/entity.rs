@@ -5,7 +5,6 @@ use base64::URL_SAFE;
 use jolocom_native_utils::did_document::DIDDocument;
 use keri::{
     database::lmdb::LmdbEventDatabase,
-    keri::Keri,
     prefix::{IdentifierPrefix, Prefix},
     signer::KeyManager,
     state::IdentifierState,

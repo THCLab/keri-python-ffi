@@ -35,7 +35,6 @@ impl<D: EventDatabase> KERL<D> {
         message: EventMessage,
         signature: Vec<u8>,
     ) -> Result<SignedEventMessage, Error> {
-        
         let sigged = message.sign(vec![AttachedSignaturePrefix::new(
             SelfSigning::Ed25519Sha512,
             signature,
@@ -60,8 +59,7 @@ impl<D: EventDatabase> KERL<D> {
             key_manager.next_public_key().0.clone(),
             KeyType::Ed25519Sha512,
         );
-        let icp = event_generator::make_icp(&pk, &next_pk, Some(self.prefix.clone()))
-            .unwrap();
+        let icp = event_generator::make_icp(&pk, &next_pk, Some(self.prefix.clone())).unwrap();
 
         let sigged = icp.sign(vec![AttachedSignaturePrefix::new(
             SelfSigning::Ed25519Sha512,

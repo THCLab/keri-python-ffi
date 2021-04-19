@@ -1,6 +1,7 @@
 use std::fmt;
 use keri_ecosystem::controller::{SharedController, SignatureState};
 use keri_ecosystem::datum::SignedAttestationDatum;
+use keri_ecosystem::communication::thing_communication::{SharedThing, Pack};
 
 foreign_enum!(
     enum SignatureState {
@@ -9,6 +10,18 @@ foreign_enum!(
         Revoked = SignatureState::Revoked,
     }
 );
+
+foreign_class!(
+    #[derive(Clone)] 
+    class SharedThing {
+        self_type SharedThing;
+        private constructor = empty;
+        fn SharedThing::init_and_run(address: String, db_path: String) -> Result<SharedThing, Error>;
+        fn SharedThing::get_datum_list(&self) -> Result<String, Error>;
+        fn SharedThing::get_formatted_kerl(&self) -> Result<String, Error>;
+    });
+
+
 
 foreign_class!(
     #[derive(Clone)] 
@@ -53,5 +66,17 @@ foreign_class!(
         fn SharedController::revoke_vc(&self, vc: &str) -> Result<(), Error>;
     }
 );
+
+foreign_class!(
+    #[derive(Clone)] 
+    class Pack {
+        self_type Pack;
+        private constructor = empty;
+        fn Pack::new(address: String) -> Pack;
+        fn Pack::incept_thing(&mut self, sender: &mut SharedController, courier: &SharedController, receiver: &SharedController) -> Result<(), Error>;
+        fn Pack::transfer_ownership(&mut self, owner: &mut SharedController, next_owner: &SharedController, comment: &str) -> Result<(), Error>; 
+        fn Pack::receive(&mut self, receiver: SharedController, comment: &str) -> Result<(), Error>;
+    });
+
 
 
