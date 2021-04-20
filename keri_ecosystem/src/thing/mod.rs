@@ -129,7 +129,7 @@ pub fn test_pack() -> Result<(), Error> {
     let sender_prefix = sender.get_prefix()?;
     // Compute vc related stuff
     let msg = format!("Pack sent to {}", receiver_pref);
-    let sender_vc = AttestationDatum::new(&msg, &sender_prefix);
+    let sender_vc = AttestationDatum::new(&msg, &sender_prefix, vec![]);
     let signed_ad = sender.issue_vc(&sender_vc)?;
 
     let vc_str = signed_ad.get_attestation_datum()?;
@@ -156,7 +156,7 @@ pub fn test_pack() -> Result<(), Error> {
 
     // Compute vc related stuff
     let msg = "I got the pack";
-    let ad = AttestationDatum::new(msg, &courier.get_prefix()?);
+    let ad = AttestationDatum::new(msg, &courier.get_prefix()?, vec![]);
 
     let signed_ad = courier.issue_vc(&ad).unwrap();
 

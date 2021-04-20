@@ -12,12 +12,10 @@ use keri::{
     database::lmdb::LmdbEventDatabase, event_message::parse::signed_event_stream,
     prefix::IdentifierPrefix, state::IdentifierState,
 };
-use tempfile::Builder;
 
 use crate::{controller::SharedController, error::Error, thing::Thing};
 
 use super::tcp_communication::TCPCommunication;
-use crate::controller::Controller;
 use crate::datum::AttestationDatum;
 use crate::datum::SignedAttestationDatum;
 use crate::kerl::event_generator;
@@ -147,12 +145,14 @@ pub fn get_input(prompt: &str) -> String {
 pub struct Pack {
     address: String,
     state: IdentifierState,
+    attestations: Vec<AttestationDatum>
+
 }
 
 impl Pack {
 
     pub fn new(address: String) -> Self {
-        Pack {address: address, state: IdentifierState::default()}
+        Pack {address: address, state: IdentifierState::default(), attestations: vec![]}
     }
 
     pub fn incept_thing(
@@ -188,7 +188,9 @@ impl Pack {
         //     comment,
         //     &sender.get_prefix()?,
         // );
-        let signed_post_receipt = sender.issue_vc(&comment)?;
+        let ad = AttestationDatum::new(comment, &sender.get_prefix()?, vec![]);
+        let signed_post_receipt = sender.issue_vc(&serde_json::to_string(&ad).unwrap())?;
+        self.attestations.push(ad);
 
         let vc_str = signed_post_receipt.get_attestation_datum()?.clone();
         let ixn = event_generator::make_ixn(Some(&vc_str), pack_state.clone())?;
@@ -252,7 +254,11 @@ impl Pack {
         //     comment,
         //     &owner.get_prefix()?,
         // );
-        let signed_post_receipt = owner.issue_vc(&comment)?;
+
+        let last_ad = self.attestations.last().unwrap().to_owned();
+        let ad = AttestationDatum::new(&comment, &owner.get_prefix()?, vec![last_ad.get_id()]);
+        let signed_post_receipt = owner.issue_vc(&serde_json::to_string(&ad).unwrap())?;
+        self.attestations.push(ad);
 
         let vc_str = signed_post_receipt.get_attestation_datum()?.clone();
         let ixn = event_generator::make_ixn(Some(&vc_str), pack_state.clone())?;
@@ -311,7 +317,9 @@ impl Pack {
         //     comment,
         //     &owner.get_prefix()?,
         // );
-        let signed_post_receipt = receiver.issue_vc(&comment)?;
+        let last_ad = self.attestations.last().unwrap().to_owned();
+        let ad = AttestationDatum::new(comment, &receiver.get_prefix()?, vec![last_ad.get_id()]);
+        let signed_post_receipt = receiver.issue_vc(&serde_json::to_string(&ad).unwrap())?;
 
         let vc_str = signed_post_receipt.get_attestation_datum()?.clone();
         let ixn = event_generator::make_ixn(Some(&vc_str), pack_state.clone())?;

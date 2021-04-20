@@ -168,9 +168,9 @@ impl SharedController {
     }
 
     // Returns signature of last vc.
-    pub fn issue_vc(&self, msg: &str) -> Result<SignedAttestationDatum, Error> {
+    pub fn issue_vc(&self, ad_str: &str) -> Result<SignedAttestationDatum, Error> {
         let mut e = self.controller.lock().unwrap();
-        let ad = AttestationDatum::new(msg, &e.main_entity.get_prefix()?);
+        let ad = serde_json::from_str(ad_str).unwrap();
         e.issue_vc(&ad)
     }
 
@@ -182,7 +182,7 @@ impl SharedController {
 
     pub fn sign_message(&self, msg: &str) -> Result<SignedAttestationDatum, Error> {
         let pref = self.get_prefix()?;
-        let ad = AttestationDatum::new(msg, &pref);
+        let ad = AttestationDatum::new(msg, &pref, vec![]);
         let vc_str = serde_json::to_string(&ad)
             .map_err(|_e| Error::Generic("Can't serialize attestation datum".into()))?;
         let signature = self.sign(&vc_str)?;
@@ -359,7 +359,7 @@ impl Controller {
     }
 
     pub fn sign_message(&mut self, msg: &str) -> Result<Vec<u8>, Error> {
-        let attestation_datum = AttestationDatum::new(msg, &self.main_entity.get_prefix()?);
+        let attestation_datum = AttestationDatum::new(msg, &self.main_entity.get_prefix()?, vec![]);
         let signed_attestation_datum = self.issue_vc(&attestation_datum)?;
 
         signed_attestation_datum.get_signature()
@@ -471,7 +471,7 @@ mod tests {
         // Compute vc related stuff
         let msg = "Some message";
 
-        let attestation_datum = AttestationDatum::new(msg, &cont.main_entity.get_prefix()?);
+        let attestation_datum = AttestationDatum::new(msg, &cont.main_entity.get_prefix()?, vec![]);
         let signed_attestation_datum = cont.issue_vc(&attestation_datum)?;
         let ad_str = signed_attestation_datum.get_attestation_datum()?;
         let vc_signature = signed_attestation_datum.get_signature()?;
@@ -522,7 +522,7 @@ mod tests {
         let prefix = cont.main_entity.get_prefix()?;
         // Compute vc related stuff
         let msg = "Some message";
-        let ad = AttestationDatum::new(msg, &prefix);
+        let ad = AttestationDatum::new(msg, &prefix, vec![]);
 
         let signed_ad = cont.issue_vc(&ad)?;
         cont.update_keys()?;

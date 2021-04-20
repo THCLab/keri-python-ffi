@@ -114,7 +114,7 @@ impl AttestationDatum {
         })
     }
 
-    pub fn new(msg: &str, issuer: &str) -> Self {
+    pub fn new(msg: &str, issuer: &str, sources: Vec<AttestationDatumId>) -> Self {
         let datum = Datum {
             message: msg.into(),
             issuer: issuer.into(),
@@ -124,12 +124,16 @@ impl AttestationDatum {
             URL_SAFE,
         );
         let id = AttestationDatumId::new(issuer, &b64_hash);
-        let source = vec![AttestationDatumId::new(issuer, "sourceID")];
+        let source = sources; //vec![AttestationDatumId::new(issuer, "sourceID")];
         AttestationDatum { id, source, datum }
     }
 
     pub fn get_datum(&self) -> Datum {
         self.datum.clone()
+    }
+
+    pub fn get_id(&self) -> AttestationDatumId {
+        self.id.clone()
     }
 }
 
@@ -189,7 +193,7 @@ impl SignedAttestationDatum {
 pub fn test_attestation_id_serialization() -> Result<(), Error> {
     let issuer_pref = "D5bw5KrpU2xRc3Oi4rsyBK9By6aotmXU0fNEybJbja1Q";
     let msg_str = "hi there";
-    let ad = AttestationDatum::new(msg_str, issuer_pref);
+    let ad = AttestationDatum::new(msg_str, issuer_pref, vec![]);
     let id = ad.id;
 
     let ser_id = serde_json::to_string(&id).unwrap();
