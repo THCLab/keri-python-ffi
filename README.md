@@ -21,23 +21,9 @@ Then open another terminal and run:
 
     python3 pack_management.py
 
-
-To run controller example go to `ffi/python` and run:
-
-    python3 controller_example.py
+![pack example_diagram](../assets/pack-example-diagram.png?raw=true)
 
 #### Preview
-![entity example](../assets/entity_example.gif?raw=true)
+![pack example](../assets/package_example.gif?raw=true)
 
-To run issuer and holder example go to `ffi/python/crudential_example` and run:
 
-    python3 issuer.py
-
-Open another termianl and run:
-
-    python3 holder.py
-
-#### Preview
-![issuer holder example](../assets/issuer_holder_example.gif?raw=true)
-
-For more examples check `ffi/python` folder.
