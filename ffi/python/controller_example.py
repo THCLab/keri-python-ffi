@@ -63,28 +63,28 @@ while(True):
   
   elif val[:4] == "sign":
     inp = val.split(" ", 1)
-    try:
-      message = inp[1]
-      signed_data = controller.issue_vc(message)
+    # try:
+    message = inp[1]
+    signed_data = controller.issue_vc(message)
 
-      # create crudential and write it to file
-      # TODO use some better way of sending crudential than the file.
-      with open('last_crudential', 'w') as file:
-        ser = signed_data.serialize()
-        file.write(ser + "\n")
+    # create crudential and write it to file
+    # TODO use some better way of sending crudential than the file.
+    with open('last_crudential', 'w') as file:
+      ser = str(signed_data)
+      file.write(ser + "\n")
 
-      # Pretty printing the vc json
-      vc_dict = json.loads(signed_data.serialize())
-      pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
-      print("Issuer creates the vc: \n" + pretty_vc + "\n")
-  
-      vc = signed_data.get_attestation_datum()
-      vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
-      b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
-      print("VC hash:\n\t" + str(b64_vc_hash) + "\n")
-      print("Current KEL:\n" + controller.get_kerl())
-    except:
-      print("No message to sign\n")
+    # Pretty printing the vc json
+    # vc_dict = json.loads(str(signed_data))
+    # pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
+    print("Issuer creates the vc: \n" + str(signed_data) + "\n")
+
+    vc = signed_data.get_attestation_datum()
+    vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
+    b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
+    print("VC hash:\n\t" + str(b64_vc_hash) + "\n")
+    print("Current KEL:\n" + controller.get_kerl())
+    # except:
+      # print("No message to sign\n")
  
   elif val[:6] == "diddoc":
     # get did document for given prefix

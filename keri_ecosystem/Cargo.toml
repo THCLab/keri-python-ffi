@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 keri = { git = "https://github.com/decentralized-identity/keriox", rev = "fed49f32883fb50889693567f6cf0da8f0803a64"}
 ursa = { git = "https://github.com/hyperledger/ursa", rev = "d4af8efd", default-features = false, features = ["portable"]}
+acdc = { git = "ssh://gerrit.opensoftware.pl/HCF/acdc-rust" }
 serde = "1.0"
 serde_json = "1.0"
 base64 = "0.13.0"

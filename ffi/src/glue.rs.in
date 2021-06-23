@@ -1,6 +1,6 @@
 use std::fmt;
 use keri_ecosystem::controller::{SharedController, SignatureState};
-use keri_ecosystem::datum::SignedAttestationDatum;
+use keri_ecosystem::datum::{SignedAttestationDatum};
 
 foreign_enum!(
     enum SignatureState {
@@ -15,11 +15,11 @@ foreign_class!(
     class SignedAttestationDatum {
         self_type SignedAttestationDatum;
         private constructor = empty;
-        fn SignedAttestationDatum::to_formatted_string(&self) -> Result<String, Error>;
-        fn SignedAttestationDatum::serialize(&self) -> Result<String, Error>;
+        fn SignedAttestationDatum::to_string(&self) -> Result<String, Error>;
+        // fn SignedAttestationDatum::serialize(&self) -> Result<String, Error>;
         fn SignedAttestationDatum::deserialize(msg: &str) -> Result<SignedAttestationDatum, Error>;
         fn SignedAttestationDatum::get_issuer(&self) -> Result<String, Error>;
-        fn SignedAttestationDatum::get_signature(&self) -> Result<Vec<u8>, Error>;
+        // fn SignedAttestationDatum::get_signature(&self) -> Result<Vec<u8>, Error>;
         fn SignedAttestationDatum::get_attestation_datum(&self) -> Result<String, Error>;
     });
 
@@ -48,7 +48,7 @@ foreign_class!(
         fn SharedController::get_formatted_kerl(&self) -> Result<String, Error>;
         fn SharedController::get_formatted_tel(&self, vc_dig: &str) -> Result<String, Error>;
 
-        fn SharedController::verify_vc(&self, sd: &SignedAttestationDatum) -> Result<SignatureState, Error>;
+        fn SharedController::verify_vc(&self, sd: &SignedAttestationDatum) -> Result<bool, Error>;
         fn SharedController::issue_vc(&self, vc: &str) -> Result<SignedAttestationDatum, Error>;
         fn SharedController::revoke_vc(&self, vc: &str) -> Result<(), Error>;
     }

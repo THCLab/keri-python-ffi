@@ -18,8 +18,9 @@ print("\nHolder: did:keri:" + verifier.get_prefix() + "\n")
 # Simulate getting the VC
 with open('last_crudential', 'r') as file:
     crud = file.read()
+print(str(crud))
 signed_data = SignedAttestationDatum.deserialize(crud)
-print("Got VC: \n" + signed_data.serialize())
+print("Got VC: \n" + signed_data.to_string())
 
 issuer = signed_data.get_issuer()
 
