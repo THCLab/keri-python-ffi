@@ -10,7 +10,6 @@ use crate::{
     tel::TEL,
 };
 use base64::URL_SAFE;
-use jolocom_native_utils::did_document::{state_to_did_document, DIDDocument};
 use keri::{
     derivation::self_addressing::SelfAddressing,
     event::sections::seal::EventSeal,
@@ -73,10 +72,10 @@ impl SharedController {
     //     })
     // }
 
-    pub fn get_did_doc(&self, id: &str) -> Result<String, Error> {
-        let e = self.controller.lock().unwrap();
-        Ok(serde_json::to_string_pretty(&e.get_did_doc(id, &e.main_entity)?).unwrap())
-    }
+    // pub fn get_did_doc(&self, id: &str) -> Result<String, Error> {
+    //     let e = self.controller.lock().unwrap();
+    //     Ok(serde_json::to_string_pretty(&e.get_did_doc(id, &e.main_entity)?).unwrap())
+    // }
 
     pub fn update_keys(&mut self) -> Result<(), Error> {
         let mut e = self.controller.lock().unwrap();
@@ -235,9 +234,9 @@ impl Controller {
     }
 
     pub fn verify(&self, issuer_id: &str, msg: &str, signature: &str) -> Result<bool, Error> {
-        let ddoc = self.get_did_doc(issuer_id, &self.main_entity)?;
+        let ddoc = self.get_state(&issuer_id.parse::<IdentifierPrefix>()?, &self.main_entity)?.unwrap();
 
-        self.main_entity.verify(&ddoc, msg, signature)
+        self.main_entity.verify(ddoc, msg, signature)
     }
 
     pub fn update_keys(&mut self) -> Result<(), Error> {
@@ -252,13 +251,13 @@ impl Controller {
         self.main_entity.get_kerl()
     }
 
-    pub fn get_did_doc(&self, id: &str, ent: &Entity) -> Result<DIDDocument, Error> {
-        let pref: IdentifierPrefix = id.parse().map_err(|e| Error::KeriError(e))?;
-        let state = self
-            .get_state(&pref, ent)?
-            .ok_or(Error::Generic(format!("There is no state for {}.", id)))?;
-        Ok(state_to_did_document(state, "keri"))
-    }
+    // pub fn get_did_doc(&self, id: &str, ent: &Entity) -> Result<DIDDocument, Error> {
+    //     let pref: IdentifierPrefix = id.parse().map_err(|e| Error::KeriError(e))?;
+    //     let state = self
+    //         .get_state(&pref, ent)?
+    //         .ok_or(Error::Generic(format!("There is no state for {}.", id)))?;
+    //     Ok(state_to_did_document(state, "keri"))
+    // }
 
     /// Make Transaction Event Log event.
     ///
