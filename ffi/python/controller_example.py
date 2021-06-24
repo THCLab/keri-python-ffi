@@ -25,19 +25,19 @@ controller.run()
 
 while(True):
   command = """
-  rot - update keys
   kel - print key event log
   sign <SCHEMA> <MESSAGE> - sign given message and create VC\n\n"""
   # verify - verify signature of last signed VC\n\n"""
+  # rot - update keys
 
   val = input("Available commands:" + command)
 
-  if val == "rot":
-    # rotate keys
-    controller.update_keys()
-    print("Keys updated. Current KEL: \n" + controller.get_kerl())
+  # if val == "rot":
+  #   # rotate keys
+  #   controller.update_keys()
+  #   print("Keys updated. Current KEL: \n" + controller.get_kerl())
   
-  elif val == "kel":
+  if val == "kel":
     # print kel
     print(controller.get_kerl() + "\n")
   
@@ -87,7 +87,7 @@ while(True):
 
     vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
     b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
-    print("ACDC hash:\n\t" + str(b64_vc_hash) + "\n")
+    print("Adding ACDC hash to KEL: " + str(b64_vc_hash))
     print("Current KEL:\n" + controller.get_kerl())
     # except:
       # print("No message to sign\n")

@@ -20,9 +20,10 @@ with open('last_crudential', 'r') as file:
     crud = file.read().strip()
 
 signed_data = SignedAttestationDatum.deserialize(crud)
-print("Got ACDC: \n")
+print("Got ACDC raw: \n" + crud + "\n")
 
 # Pretty printing the vc json
+print("Parsed ACDC:\n")
 vc_dict = json.loads(str(signed_data.get_attestation_datum()))
 pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
 print(pretty_vc)
