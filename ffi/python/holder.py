@@ -20,7 +20,14 @@ with open('last_crudential', 'r') as file:
     crud = file.read().strip()
 
 signed_data = SignedAttestationDatum.deserialize(crud)
-print("Got VC: \n" + str(signed_data) + "\n")
+print("Got ACDC: \n")
+
+# Pretty printing the vc json
+vc_dict = json.loads(str(signed_data.get_attestation_datum()))
+pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
+print(pretty_vc)
+signature = base64.urlsafe_b64encode(bytes(signed_data.get_signature())).decode('ascii')
+print("signature: " + signature + "\n")
 
 issuer = signed_data.get_issuer()
 

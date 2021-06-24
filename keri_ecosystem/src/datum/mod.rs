@@ -41,5 +41,16 @@ impl SignedAttestationDatum {
     }
     pub fn get_issuer(&self) -> Result<String, Error> {
             Ok(self.sa.get_id().testator_id.get_id())
-        }
+    }
+
+    pub fn get_signature(&self) -> Result<Vec<u8>, Error> {
+        self.sa.get_signature().map_err(|e| Error::Generic(e.to_string()))
+    }
+
+    pub fn get_schema(&self) -> Result<String, Error> {
+        self.sa.get_schema().map_err(|e| Error::Generic("Can't get schema".into()))
+    }
+    pub fn get_datum(&self) -> Result<String, Error> {
+        self.sa.get_datum().map_err(|e| Error::Generic("Can't get schema".into()))
+    }
 }

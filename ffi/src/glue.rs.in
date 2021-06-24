@@ -19,8 +19,10 @@ foreign_class!(
         // fn SignedAttestationDatum::serialize(&self) -> Result<String, Error>;
         fn SignedAttestationDatum::deserialize(msg: &str) -> Result<SignedAttestationDatum, Error>;
         fn SignedAttestationDatum::get_issuer(&self) -> Result<String, Error>;
-        // fn SignedAttestationDatum::get_signature(&self) -> Result<Vec<u8>, Error>;
+        fn SignedAttestationDatum::get_signature(&self) -> Result<Vec<u8>, Error>;
         fn SignedAttestationDatum::get_attestation_datum(&self) -> Result<String, Error>;
+        fn SignedAttestationDatum::get_schema(&self) -> Result<String, Error>;
+        fn SignedAttestationDatum::get_datum(&self) -> Result<String, Error>;
     });
 
 foreign_class!(

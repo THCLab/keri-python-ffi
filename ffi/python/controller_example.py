@@ -19,7 +19,7 @@ print("\nController: did:keri:" + controller.get_prefix() + "\n")
 controller_id = ":".join(["did", "keri", controller.get_prefix()])
 b64_vc_hash = ""
 
-# Last signed VC
+# Last signed ACDC
 vc = ""
 controller.run()
 
@@ -27,9 +27,6 @@ while(True):
   command = """
   rot - update keys
   kel - print key event log
-  rev - revoke last VC
-  tel - print tel of last VC
-  diddoc <PREFIX> - print did document of did:keri:<PREFIX> controller
   sign <MESSAGE> - sign given message and create VC\n\n"""
   # verify - verify signature of last signed VC\n\n"""
 
@@ -44,22 +41,22 @@ while(True):
     # print kel
     print(controller.get_kerl() + "\n")
   
-  elif val == "rev":
-    # revoke last vc
-    controller.revoke_vc(vc)
-    vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
-    b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
+  # elif val == "rev":
+  #   # revoke last vc
+  #   controller.revoke_vc(vc)
+  #   vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
+  #   b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
 
-    print("VC of digest: "+ b64_vc_hash + " was revoked. Current TEL:")
-    print(controller.get_formatted_tel(b64_vc_hash) + "\n")
+  #   print("VC of digest: "+ b64_vc_hash + " was revoked. Current TEL:")
+  #   print(controller.get_formatted_tel(b64_vc_hash) + "\n")
   
-  elif val == "tel":
-    # print tel of last signed vc
-    if len(b64_vc_hash) > 0:
-      print("vc digest: "+ b64_vc_hash)
-      print(controller.get_formatted_tel(b64_vc_hash) + "\n")
-    else:
-      print("No vc has been signed yet\n")
+  # elif val == "tel":
+  #   # print tel of last signed vc
+  #   if len(b64_vc_hash) > 0:
+  #     print("vc digest: "+ b64_vc_hash)
+  #     print(controller.get_formatted_tel(b64_vc_hash) + "\n")
+  #   else:
+  #     print("No vc has been signed yet\n")
   
   elif val[:4] == "sign":
     inp = val.split(" ", 1)
@@ -76,26 +73,34 @@ while(True):
     # Pretty printing the vc json
     # vc_dict = json.loads(str(signed_data))
     # pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
-    print("Issuer creates the vc: \n" + str(signed_data) + "\n")
+    print("Issuer creates the ACDC: \n" )
 
     vc = signed_data.get_attestation_datum()
+
+    # Pretty printing the vc json
+    vc_dict = json.loads(str(signed_data.get_attestation_datum()))
+    pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
+    print(pretty_vc)
+    signature = base64.urlsafe_b64encode(bytes(signed_data.get_signature())).decode('ascii')
+    print("signature: " + signature + "\n")
+
     vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
     b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
-    print("VC hash:\n\t" + str(b64_vc_hash) + "\n")
+    print("ACDC hash:\n\t" + str(b64_vc_hash) + "\n")
     print("Current KEL:\n" + controller.get_kerl())
     # except:
       # print("No message to sign\n")
  
-  elif val[:6] == "diddoc":
-    # get did document for given prefix
-    inp = val.split(" ")
-    try:
-      prefix = inp[1].strip()
-      ddoc = controller.get_did_doc(prefix)
-      formated_ddoc = json.dumps(json.loads(ddoc), indent=4, sort_keys=True)
-      print("\n" + "did document: \n" + formated_ddoc + "\n")
-    except:
-      print("Missing prefix\n")
+  # elif val[:6] == "diddoc":
+  #   # get did document for given prefix
+  #   inp = val.split(" ")
+  #   try:
+  #     prefix = inp[1].strip()
+  #     ddoc = controller.get_did_doc(prefix)
+  #     formated_ddoc = json.dumps(json.loads(ddoc), indent=4, sort_keys=True)
+  #     print("\n" + "did document: \n" + formated_ddoc + "\n")
+  #   except:
+  #     print("Missing prefix\n")
   
 temp_dir.cleanup()
 dir.cleanup()
