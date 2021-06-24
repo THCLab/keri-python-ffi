@@ -27,7 +27,7 @@ while(True):
   command = """
   rot - update keys
   kel - print key event log
-  sign <MESSAGE> - sign given message and create VC\n\n"""
+  sign <SCHEMA> <MESSAGE> - sign given message and create VC\n\n"""
   # verify - verify signature of last signed VC\n\n"""
 
   val = input("Available commands:" + command)
@@ -59,10 +59,11 @@ while(True):
   #     print("No vc has been signed yet\n")
   
   elif val[:4] == "sign":
-    inp = val.split(" ", 1)
+    inp = val.split(" ", 2)
     # try:
-    message = inp[1]
-    signed_data = controller.issue_vc(message)
+    schema = inp[1]
+    message = inp[2]
+    signed_data = controller.issue_vc(schema, message)
 
     # create crudential and write it to file
     # TODO use some better way of sending crudential than the file.

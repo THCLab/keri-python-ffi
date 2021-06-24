@@ -154,10 +154,10 @@ impl SharedController {
     }
 
     // Returns signed acdc.
-    pub fn issue_vc(&self, msg: &str) -> Result<SignedAttestationDatum, Error> {
+    pub fn issue_vc(&self, schema: &str, msg: &str) -> Result<SignedAttestationDatum, Error> {
         let mut e = self.controller.lock().unwrap();
         let pref = e.main_entity.get_prefix()?.to_string();
-        let ad = create_attestation(&pref, &["did:", &pref,"/att_id"].join(""), msg, "123")?;
+        let ad = create_attestation(&pref, &["did:", &pref,"/att_id"].join(""), msg, schema)?;
         let sad = e.issue_vc(&ad)?;
         Ok(SignedAttestationDatum {sa: sad})
     }
@@ -168,7 +168,7 @@ impl SharedController {
         e.revoke_vc(&ad)
     }
 
-    pub fn sign_message(&self, msg: &str) -> Result<SignedAttestation<String, Message, String>, Error> {
+    pub fn sign_message(&self, msg: &str) -> Result<SignedAttestation<String, String, String>, Error> {
         let pref = self.get_prefix()?;
         let ad = create_attestation(&pref.to_string(), "att_id", msg, "123")?;
         let vc_str = serde_json::to_string(&ad)
@@ -288,7 +288,7 @@ impl Controller {
         Ok(tel_ev)
     }
 
-    pub fn issue_vc(&mut self, vc: &Attestation<String, Message, String>) -> Result<SignedAttestation<String, Message, String>, Error> {
+    pub fn issue_vc(&mut self, vc: &Attestation<String, String, String>) -> Result<SignedAttestation<String, String, String>, Error> {
         // Sign vc.
         let vc_str = serde_json::to_string(&vc)
             .map_err(|_e| Error::Generic("Can't serialize attestation datum".into()))?;
@@ -323,7 +323,7 @@ impl Controller {
 
     pub fn verify_vc(
         &self,
-        signed_datum: &SignedAttestation<String, Message, String>,
+        signed_datum: &SignedAttestation<String, String, String>,
     ) -> Result<bool, Error> {
         let issuer = &signed_datum.get_id().testator_id.get_id();
         let pref: IdentifierPrefix = issuer.split(":").collect::<Vec<_>>()[1].parse()?;
@@ -345,7 +345,7 @@ impl Controller {
         signed_datum.verify(&vec![], &key_map).map_err(|e| Error::Generic(e.to_string()))
     }
 
-    pub fn sign_message(&mut self, msg: &str) -> Result<SignedAttestation<String, Message, String>, Error> {
+    pub fn sign_message(&mut self, msg: &str) -> Result<SignedAttestation<String, String, String>, Error> {
         let attestation_datum = create_attestation(&self.main_entity.get_prefix()?, "att_id", msg, "1234")?;
         let signed_attestation_datum = self.issue_vc(&attestation_datum)?;
 

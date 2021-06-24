@@ -51,7 +51,7 @@ foreign_class!(
         fn SharedController::get_formatted_tel(&self, vc_dig: &str) -> Result<String, Error>;
 
         fn SharedController::verify_vc(&self, sd: &SignedAttestationDatum) -> Result<bool, Error>;
-        fn SharedController::issue_vc(&self, vc: &str) -> Result<SignedAttestationDatum, Error>;
+        fn SharedController::issue_vc(&self, schema: &str, vc: &str) -> Result<SignedAttestationDatum, Error>;
         fn SharedController::revoke_vc(&self, vc: &str) -> Result<(), Error>;
     }
 );
