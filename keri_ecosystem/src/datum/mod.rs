@@ -43,10 +43,3 @@ impl SignedAttestationDatum {
             Ok(self.sa.get_id().testator_id.get_id())
         }
 }
-
-#[test]
-pub fn test() {
-    let s = r#"{"i":"did:DwSOs_FFwfREtIA_-XnGQihh2yUVjMRxuzCAqhCR3R2watt_id","s":[],"x":"123","d":{"message":"flflf"}}--csNMSmo1yHIijQPXi0HtjLw6pmy5jCZYbdcDVhFTdA1qQz_YR8XxkjbOosLC8WSQS2vF9bLJ0B9zqlHkYMTlDQ="#;
-    let s = r#"{"i":"did:DwSOs_FFwfREtIA_-XnGQihh2yUVjMRxuzCAqhCR3R2watt_id","s":[],"x":"123","d":{"message":"flflf"}}--csNMSmo1yHIijQPXi0HtjLw6pmy5jCZYbdcDVhFTdA1qQz_YR8XxkjbOosLC8WSQS2vF9bLJ0B9zqlHkYMTlDQ=="#;
-    SignedAttestationDatum::deserialize(s).unwrap();
-}

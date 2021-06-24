@@ -17,24 +17,19 @@ print("\nHolder: did:keri:" + verifier.get_prefix() + "\n")
 
 # Simulate getting the VC
 with open('last_crudential', 'r') as file:
-    crud = file.read()
-print(str(crud))
+    crud = file.read().strip()
+
 signed_data = SignedAttestationDatum.deserialize(crud)
-print("Got VC: \n" + signed_data.to_string())
+print("Got VC: \n" + str(signed_data) + "\n")
 
 issuer = signed_data.get_issuer()
 
-print("Asking did:keri:" + issuer + " for KEL and TEL:" )
+print("Asking did:keri:" + issuer + " for KEL:" )
 verification = verifier.verify_vc(signed_data)
 
-if verification == SignatureState.Ok:
+if verification:
     print("VC is signed by " + issuer + "\n")
-elif verification == SignatureState.Revoked:
-    vc_str = signed_data.get_attestation_datum()
-    vc_hash = blake3.blake3(bytes(vc_str, encoding='utf8')).digest()
-    vc_b64_hash = str(base64.urlsafe_b64encode(vc_hash).decode())
-    print("VC of digest " + vc_b64_hash + " has been revoked\n")
-elif verification == SignatureState.Wrong:
+else:
     print("Signature is wrong. VC is not signed by " + issuer + "\n")
 
 verifier_temp_dir.cleanup()

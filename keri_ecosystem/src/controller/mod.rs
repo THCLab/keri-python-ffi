@@ -157,7 +157,7 @@ impl SharedController {
     pub fn issue_vc(&self, msg: &str) -> Result<SignedAttestationDatum, Error> {
         let mut e = self.controller.lock().unwrap();
         let pref = e.main_entity.get_prefix()?.to_string();
-        let ad = create_attestation(&pref, &["did:", &pref,"att_id"].join(""), msg, "123")?;
+        let ad = create_attestation(&pref, &["did:", &pref,"/att_id"].join(""), msg, "123")?;
         let sad = e.issue_vc(&ad)?;
         Ok(SignedAttestationDatum {sa: sad})
     }
@@ -326,16 +326,13 @@ impl Controller {
         signed_datum: &SignedAttestation<String, Message, String>,
     ) -> Result<bool, Error> {
         let issuer = &signed_datum.get_id().testator_id.get_id();
-        let pref = issuer.split(":").collect::<Vec<_>>()[1];
-        println!("issuer: {}", issuer);
+        let pref: IdentifierPrefix = issuer.split(":").collect::<Vec<_>>()[1].parse()?;
 
-        let state = self.get_state(&pref.parse::<IdentifierPrefix>()?, &self.main_entity)?.unwrap();
+        let state = self.get_state(&pref, &self.main_entity)?.unwrap();
+
         let key = state.current.public_keys.get(0).unwrap().derivative().to_vec();
         let mut key_map = HashMap::new();
         key_map.insert(issuer.to_owned(), key);
-
-        println!("keymap: {:?}", key_map);
-        
 
         // // Ask issuer for tel
         // let address = self.comm.get_address_for_prefix(&issuer)?.unwrap();
@@ -345,7 +342,6 @@ impl Controller {
         //     serde_json::from_str(tel_str.trim()).map_err(|e| Error::Generic(e.to_string()))?
         // };
 
-        println!("\n\nsigned stt: {}\n\n", signed_datum.to_string());
         signed_datum.verify(&vec![], &key_map).map_err(|e| Error::Generic(e.to_string()))
     }
 
