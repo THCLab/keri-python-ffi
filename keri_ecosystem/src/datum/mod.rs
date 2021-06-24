@@ -1,4 +1,5 @@
 use acdc::{attestation::{Attestation, AttestationId}, datum::Message, identifier::{BasicIdentifier, Identifier}, signed_attestation::{KeyType, Proof, SignedAttestation}};
+use base64::URL_SAFE;
 
 use crate::error::Error;
 
@@ -7,11 +8,13 @@ pub fn create_attestation(testator_id: &str, attestation_id: &str, message: &str
     let testator_id = Identifier::Basic(BasicIdentifier::new(testator_id));
     
     // Create attestation which will be a source.
-    let source_attestation_id: AttestationId = attestation_id.parse().map_err(|e| Error::Generic("Can't parse attestation id".into()))?;
+    let tmp_attestation_id: AttestationId = AttestationId::new(testator_id.clone(), &testator_id.clone().get_id());
     
-    Ok(
-        Attestation::new(source_attestation_id, None, vec![], schema.to_string(), message.to_string(), None)
-    )
+    let tmp_attestation: Attestation<String, String, String> = Attestation::new(tmp_attestation_id, None, vec![], schema.to_string(), message.to_string(), None);
+    let att_hash = base64::encode_config(blake3::hash(&serde_json::to_vec(&tmp_attestation).unwrap()).as_bytes(), URL_SAFE);
+    let attestation_id: AttestationId = AttestationId::new(testator_id.clone(), &vec![testator_id.clone().get_id(), att_hash].join("/"));
+    
+    Ok(Attestation::new(attestation_id, None, vec![], schema.to_string(), message.to_string(), None))
 }
 
 pub fn sign_attestation(att: Attestation<String, String, String>, signature: Vec<u8>) -> Result<SignedAttestation<String, String, String>, Error> {

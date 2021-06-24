@@ -63,32 +63,37 @@ while(True):
     # try:
     schema = inp[1]
     message = inp[2]
-    signed_data = controller.issue_vc(schema, message)
+    try:
+      json.loads(message)
+    
+      signed_data = controller.issue_vc(schema, message)
 
-    # create crudential and write it to file
-    # TODO use some better way of sending crudential than the file.
-    with open('last_crudential', 'w') as file:
-      ser = str(signed_data)
-      file.write(ser + "\n")
+      # create crudential and write it to file
+      # TODO use some better way of sending crudential than the file.
+      with open('last_crudential', 'w') as file:
+        ser = str(signed_data)
+        file.write(ser + "\n")
 
-    # Pretty printing the vc json
-    # vc_dict = json.loads(str(signed_data))
-    # pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
-    print("Issuer creates the ACDC: \n" )
+      # Pretty printing the vc json
+      # vc_dict = json.loads(str(signed_data))
+      # pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
+      print("Issuer creates the ACDC: \n" )
 
-    vc = signed_data.get_attestation_datum()
+      vc = signed_data.get_attestation_datum()
 
-    # Pretty printing the vc json
-    vc_dict = json.loads(str(signed_data.get_attestation_datum()))
-    pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
-    print(pretty_vc)
-    signature = base64.urlsafe_b64encode(bytes(signed_data.get_signature())).decode('ascii')
-    print("signature: " + signature + "\n")
+      # Pretty printing the vc json
+      vc_dict = json.loads(str(signed_data.get_attestation_datum()))
+      pretty_vc = json.dumps(vc_dict, indent=4, sort_keys=True)
+      print(pretty_vc)
+      signature = base64.urlsafe_b64encode(bytes(signed_data.get_signature())).decode('ascii')
+      print("signature: " + signature + "\n")
 
-    vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
-    b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
-    print("Adding ACDC hash to KEL: " + str(b64_vc_hash))
-    print("Current KEL:\n" + controller.get_kerl())
+      vc_hash = blake3.blake3(bytes(vc, encoding='utf8')).digest()
+      b64_vc_hash = base64.urlsafe_b64encode(vc_hash).decode()
+      print("Adding ACDC hash to KEL: " + str(b64_vc_hash))
+      print("Current KEL:\n" + controller.get_kerl())
+    except:
+      print("Incorect message format. Should be valid json")
     # except:
       # print("No message to sign\n")
  
