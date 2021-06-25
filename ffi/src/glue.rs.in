@@ -15,6 +15,7 @@ foreign_class!(
     class SignedAttestationDatum {
         self_type SignedAttestationDatum;
         private constructor = empty;
+        fn SignedAttestationDatum::default() -> Result<SignedAttestationDatum, Error>;
         fn SignedAttestationDatum::to_string(&self) -> Result<String, Error>;
         // fn SignedAttestationDatum::serialize(&self) -> Result<String, Error>;
         fn SignedAttestationDatum::deserialize(msg: &str) -> Result<SignedAttestationDatum, Error>;

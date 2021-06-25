@@ -7,6 +7,7 @@ import base64
 import json
 import random
 import os
+import requests
 import blake3
 
 temp_dir = tempfile.TemporaryDirectory()
@@ -23,10 +24,13 @@ b64_vc_hash = ""
 vc = ""
 controller.run()
 
+signed_data = SignedAttestationDatum.default()
+
 while(True):
   command = """
   kel - print key event log
-  sign <SCHEMA> <MESSAGE> - sign given message and create VC\n\n"""
+  sign <SCHEMA> <MESSAGE> - sign given message and create VC
+  upload - uploads data to DSH\n\n"""
   # verify - verify signature of last signed VC\n\n"""
   # rot - update keys
 
@@ -37,6 +41,7 @@ while(True):
   #   controller.update_keys()
   #   print("Keys updated. Current KEL: \n" + controller.get_kerl())
   
+
   if val == "kel":
     # print kel
     print(controller.get_kerl() + "\n")
@@ -108,5 +113,21 @@ while(True):
   #   except:
   #     print("Missing prefix\n")
   
+  elif val == "upload":
+
+    headers = {
+      'Content-type': 'application/json',
+    }
+
+    result = requests.post('https://criteria-search.argo.colossi.network/api/v1/entities')
+    res = result.json()
+    id = res['result']['id']
+
+    data = "{" + "\"d\":"+signed_data.get_datum() + ",\"x\":\"" + signed_data.get_schema() + "\"}"
+    address = "https://criteria-search.argo.colossi.network/api/v1/entities/" + str(id) + "/data"
+
+    response = requests.post(address, headers=headers, data=data)
+    print("Data uploaded successfully")
+    
 temp_dir.cleanup()
 dir.cleanup()

@@ -28,6 +28,12 @@ pub struct SignedAttestationDatum {
 }
 
 impl SignedAttestationDatum {
+    pub fn default() -> Result<SignedAttestationDatum, Error> {
+        let attestation = create_attestation("", "", "", "")?;
+        let satt = sign_attestation(attestation, vec![])?;
+        Ok(SignedAttestationDatum {sa: satt})
+    }
+
     pub fn to_string(&self) -> Result<String, Error> {
         Ok(self.sa.to_string())
     }
@@ -52,6 +58,6 @@ impl SignedAttestationDatum {
         self.sa.get_schema().map_err(|e| Error::Generic("Can't get schema".into()))
     }
     pub fn get_datum(&self) -> Result<String, Error> {
-        self.sa.get_datum().map_err(|e| Error::Generic("Can't get schema".into()))
+        Ok(self.sa.get_datum().map_err(|e| Error::Generic("Can't get schema".into()))?.to_string())
     }
 }
