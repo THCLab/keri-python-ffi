@@ -115,19 +115,27 @@ while(True):
   
   elif val == "upload":
 
+    data = "{\"dri\":\"" + signed_data.get_schema() + "\"}"
+
     headers = {
       'Content-type': 'application/json',
     }
 
-    result = requests.post('https://criteria-search.argo.colossi.network/api/v1/entities')
-    res = result.json()
-    id = res['result']['id']
+    load_schema = requests.post('https://criteria-search.argo.colossi.network/api/v1/oca', headers=headers, data=data).json()
 
-    data = "{" + "\"d\":"+signed_data.get_datum() + ",\"x\":\"" + signed_data.get_schema() + "\"}"
-    address = "https://criteria-search.argo.colossi.network/api/v1/entities/" + str(id) + "/data"
+    if "errors" in load_schema:
+      for er in load_schema["errors"]:
+        print(er + "\n")
+    else:
+      result = requests.post('https://criteria-search.argo.colossi.network/api/v1/entities')
+      res = result.json()
+      id = res['result']['id']
 
-    response = requests.post(address, headers=headers, data=data)
-    print("Data uploaded successfully")
+      data = "{" + "\"d\":"+signed_data.get_datum() + ",\"x\":\"" + signed_data.get_schema() + "\"}"
+      address = "https://criteria-search.argo.colossi.network/api/v1/entities/" + str(id) + "/data"
+
+      response = requests.post(address, headers=headers, data=data)
+      print("Data uploaded successfully")
     
 temp_dir.cleanup()
 dir.cleanup()
